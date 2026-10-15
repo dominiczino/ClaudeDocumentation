@@ -1,0 +1,585 @@
+{
+ "name": "Example property",
+ "location": "1234 Example Street",
+ "surveyor": "D. Panzino",
+ "units": "ft",
+ "angleSigma": 20,
+ "circle": "cw",
+ "datum": {
+  "origin": "A",
+  "originN": 5000,
+  "originE": 5000,
+  "orient": "B",
+  "bearing": "N 86 44 09 E"
+ },
+ "landmarks": [
+  {
+   "id": "A",
+   "name": "LM-A",
+   "desc": "1/2\" rebar with yellow cap, 2 ft E of driveway apron, NW corner"
+  },
+  {
+   "id": "B",
+   "name": "LM-B",
+   "desc": "1/2\" rebar with yellow cap at NE fence corner post"
+  },
+  {
+   "id": "C",
+   "name": "LM-C",
+   "desc": "Chiseled X on concrete pad of shed, SE corner"
+  },
+  {
+   "id": "D",
+   "name": "LM-D",
+   "desc": "1/2\" rebar with yellow cap, SW corner by garden"
+  },
+  {
+   "id": "M",
+   "name": "LM-M",
+   "desc": "16d nail in top of deck post, NW post of rear deck"
+  }
+ ],
+ "points": [
+  {
+   "id": "W1",
+   "name": "W1",
+   "type": "water",
+   "depth": "42 in",
+   "desc": "Water meter box at street"
+  },
+  {
+   "id": "W2",
+   "name": "W2",
+   "type": "water",
+   "depth": "42 in",
+   "desc": "Water line bend (45 deg)"
+  },
+  {
+   "id": "W3",
+   "name": "W3",
+   "type": "water",
+   "depth": "36 in",
+   "desc": "Water line tee to hose bib"
+  },
+  {
+   "id": "W4",
+   "name": "W4",
+   "type": "water",
+   "depth": "36 in",
+   "desc": "Water entry at house foundation"
+  },
+  {
+   "id": "E1",
+   "name": "E1",
+   "type": "elec",
+   "depth": "30 in",
+   "desc": "Transformer pedestal"
+  },
+  {
+   "id": "E2",
+   "name": "E2",
+   "type": "elec",
+   "depth": "24 in",
+   "desc": "Conduit bend"
+  },
+  {
+   "id": "E3",
+   "name": "E3",
+   "type": "elec",
+   "depth": "24 in",
+   "desc": "House meter base, conduit up"
+  },
+  {
+   "id": "ST",
+   "name": "ST",
+   "type": "sewer",
+   "depth": "18 in to lid",
+   "desc": "Septic tank inlet lid"
+  },
+  {
+   "id": "DB",
+   "name": "DB",
+   "type": "sewer",
+   "depth": "20 in",
+   "desc": "Septic distribution box"
+  },
+  {
+   "id": "WELL",
+   "name": "WELL",
+   "type": "water",
+   "depth": "",
+   "desc": "Well head (casing)"
+  },
+  {
+   "id": "LP",
+   "name": "LP",
+   "type": "gas",
+   "depth": "",
+   "desc": "Propane tank fill valve"
+  }
+ ],
+ "setups": [
+  {
+   "id": "S1",
+   "date": "2026-10-10",
+   "station": "A",
+   "backsight": "B",
+   "bsReading": "0 00 00",
+   "note": "Zeroed on backsight",
+   "readings": [
+    {
+     "id": "AC",
+     "target": "C",
+     "reading": "38 07 40",
+     "dist": "",
+     "note": ""
+    },
+    {
+     "id": "AD",
+     "target": "D",
+     "reading": "97 22 00",
+     "dist": "",
+     "note": ""
+    },
+    {
+     "id": "AM",
+     "target": "M",
+     "reading": "15 29 40",
+     "dist": "",
+     "note": ""
+    },
+    {
+     "id": "AW1",
+     "target": "W1",
+     "reading": "346 13 40",
+     "dist": "",
+     "note": ""
+    },
+    {
+     "id": "AW3",
+     "target": "W3",
+     "reading": "40 37 00",
+     "dist": "",
+     "note": ""
+    },
+    {
+     "id": "AW4",
+     "target": "W4",
+     "reading": "48 26 00",
+     "dist": "",
+     "note": ""
+    },
+    {
+     "id": "AE1",
+     "target": "E1",
+     "reading": "4 49 20",
+     "dist": "",
+     "note": ""
+    },
+    {
+     "id": "AE2",
+     "target": "E2",
+     "reading": "22 47 20",
+     "dist": "",
+     "note": ""
+    },
+    {
+     "id": "AE3",
+     "target": "E3",
+     "reading": "39 19 40",
+     "dist": "",
+     "note": ""
+    },
+    {
+     "id": "AST",
+     "target": "ST",
+     "reading": "70 01 00",
+     "dist": "",
+     "note": ""
+    },
+    {
+     "id": "ADB",
+     "target": "DB",
+     "reading": "82 17 20",
+     "dist": "",
+     "note": ""
+    },
+    {
+     "id": "AWELL",
+     "target": "WELL",
+     "reading": "40 22 00",
+     "dist": "",
+     "note": ""
+    }
+   ]
+  },
+  {
+   "id": "S2",
+   "date": "2026-10-11",
+   "station": "B",
+   "backsight": "A",
+   "bsReading": "0 00 00",
+   "note": "Zeroed on backsight",
+   "readings": [
+    {
+     "id": "BC",
+     "target": "C",
+     "reading": "266 41 40",
+     "dist": "",
+     "note": ""
+    },
+    {
+     "id": "BD",
+     "target": "D",
+     "reading": "322 39 40",
+     "dist": "",
+     "note": ""
+    },
+    {
+     "id": "BM",
+     "target": "M",
+     "reading": "331 00 00",
+     "dist": "",
+     "note": ""
+    },
+    {
+     "id": "BW2",
+     "target": "W2",
+     "reading": "349 39 00",
+     "dist": "",
+     "note": ""
+    },
+    {
+     "id": "BW3",
+     "target": "W3",
+     "reading": "328 43 40",
+     "dist": "",
+     "note": ""
+    },
+    {
+     "id": "BE1",
+     "target": "E1",
+     "reading": "322 28 40",
+     "dist": "",
+     "note": ""
+    },
+    {
+     "id": "BE2",
+     "target": "E2",
+     "reading": "316 18 40",
+     "dist": "",
+     "note": ""
+    },
+    {
+     "id": "BWELL",
+     "target": "WELL",
+     "reading": "286 55 20",
+     "dist": "",
+     "note": ""
+    },
+    {
+     "id": "BLP",
+     "target": "LP",
+     "reading": "278 06 00",
+     "dist": "",
+     "note": ""
+    }
+   ]
+  },
+  {
+   "id": "S3",
+   "date": "2026-10-12",
+   "station": "C",
+   "backsight": "B",
+   "bsReading": "0 00 00",
+   "note": "Zeroed on backsight",
+   "readings": [
+    {
+     "id": "CA",
+     "target": "A",
+     "reading": "311 26 00",
+     "dist": "",
+     "note": ""
+    },
+    {
+     "id": "CD",
+     "target": "D",
+     "reading": "272 06 00",
+     "dist": "",
+     "note": ""
+    },
+    {
+     "id": "CM",
+     "target": "M",
+     "reading": "332 26 20",
+     "dist": "",
+     "note": ""
+    },
+    {
+     "id": "CW1",
+     "target": "W1",
+     "reading": "314 38 40",
+     "dist": "",
+     "note": ""
+    },
+    {
+     "id": "CW2",
+     "target": "W2",
+     "reading": "317 39 00",
+     "dist": "",
+     "note": ""
+    },
+    {
+     "id": "CE1",
+     "target": "E1",
+     "reading": "352 12 00",
+     "dist": "",
+     "note": ""
+    },
+    {
+     "id": "CST",
+     "target": "ST",
+     "reading": "283 24 40",
+     "dist": "",
+     "note": ""
+    },
+    {
+     "id": "CDB",
+     "target": "DB",
+     "reading": "275 54 20",
+     "dist": "",
+     "note": ""
+    }
+   ]
+  },
+  {
+   "id": "S4",
+   "date": "2026-10-13",
+   "station": "D",
+   "backsight": "A",
+   "bsReading": "0 00 00",
+   "note": "Zeroed on backsight",
+   "readings": [
+    {
+     "id": "DB",
+     "target": "B",
+     "reading": "45 17 40",
+     "dist": "",
+     "note": ""
+    },
+    {
+     "id": "DC",
+     "target": "C",
+     "reading": "81 26 00",
+     "dist": "",
+     "note": ""
+    },
+    {
+     "id": "DM",
+     "target": "M",
+     "reading": "42 10 40",
+     "dist": "",
+     "note": ""
+    },
+    {
+     "id": "DW1",
+     "target": "W1",
+     "reading": "5 28 00",
+     "dist": "",
+     "note": ""
+    },
+    {
+     "id": "DW2",
+     "target": "W2",
+     "reading": "23 57 00",
+     "dist": "",
+     "note": ""
+    },
+    {
+     "id": "DW3",
+     "target": "W3",
+     "reading": "39 30 00",
+     "dist": "",
+     "note": ""
+    },
+    {
+     "id": "DW4",
+     "target": "W4",
+     "reading": "51 36 00",
+     "dist": "",
+     "note": ""
+    },
+    {
+     "id": "DE3",
+     "target": "E3",
+     "reading": "53 14 40",
+     "dist": "",
+     "note": ""
+    },
+    {
+     "id": "DWELL",
+     "target": "WELL",
+     "reading": "71 55 00",
+     "dist": "",
+     "note": ""
+    },
+    {
+     "id": "DLP",
+     "target": "LP",
+     "reading": "61 09 20",
+     "dist": "",
+     "note": ""
+    }
+   ]
+  },
+  {
+   "id": "S5",
+   "date": "2026-10-14",
+   "station": "M",
+   "backsight": "A",
+   "bsReading": "0 00 00",
+   "note": "Zeroed on backsight",
+   "readings": [
+    {
+     "id": "MB",
+     "target": "B",
+     "reading": "135 30 20",
+     "dist": "",
+     "note": ""
+    },
+    {
+     "id": "MC",
+     "target": "C",
+     "reading": "223 38 20",
+     "dist": "",
+     "note": ""
+    },
+    {
+     "id": "MD",
+     "target": "D",
+     "reading": "304 03 00",
+     "dist": "",
+     "note": ""
+    },
+    {
+     "id": "MW4",
+     "target": "W4",
+     "reading": "288 04 40",
+     "dist": "",
+     "note": ""
+    },
+    {
+     "id": "ME2",
+     "target": "E2",
+     "reading": "239 50 40",
+     "dist": "",
+     "note": ""
+    },
+    {
+     "id": "ME3",
+     "target": "E3",
+     "reading": "273 56 00",
+     "dist": "",
+     "note": ""
+    },
+    {
+     "id": "MST",
+     "target": "ST",
+     "reading": "294 47 40",
+     "dist": "",
+     "note": ""
+    },
+    {
+     "id": "MDB",
+     "target": "DB",
+     "reading": "297 50 20",
+     "dist": "",
+     "note": ""
+    },
+    {
+     "id": "MLP",
+     "target": "LP",
+     "reading": "207 03 20",
+     "dist": "",
+     "note": ""
+    }
+   ]
+  }
+ ],
+ "baselines": [
+  {
+   "id": "BL1",
+   "a": "A",
+   "b": "B",
+   "dist": "142.61",
+   "note": "Steel tape, 2 measurements averaged"
+  },
+  {
+   "id": "BL2",
+   "a": "C",
+   "b": "D",
+   "dist": "164.98",
+   "note": "Steel tape"
+  }
+ ],
+ "lines": [
+  {
+   "id": "LW",
+   "name": "Water service",
+   "type": "water",
+   "pts": [
+    "W1",
+    "W2",
+    "W3",
+    "W4"
+   ],
+   "depth": "36-42 in",
+   "desc": "1\" PE"
+  },
+  {
+   "id": "LE",
+   "name": "Electric service",
+   "type": "elec",
+   "pts": [
+    "E1",
+    "E2",
+    "E3"
+   ],
+   "depth": "24-30 in",
+   "desc": "2\" PVC, 200A"
+  },
+  {
+   "id": "LS",
+   "name": "Septic",
+   "type": "sewer",
+   "pts": [
+    "W4",
+    "ST",
+    "DB"
+   ],
+   "depth": "",
+   "desc": "4\" PVC"
+  },
+  {
+   "id": "LG",
+   "name": "Well line",
+   "type": "water",
+   "pts": [
+    "WELL",
+    "W4"
+   ],
+   "depth": "48 in",
+   "desc": "1\" PE"
+  }
+ ],
+ "titleblock": {
+  "project": "1234 Example Street",
+  "drawn_by": "D. Panzino",
+  "dwg_no": "S-001",
+  "rev": "A"
+ },
+ "notes": [
+  "Coordinates are local (assumed). Bearings are referenced to the line LM-A to LM-B.",
+  "Depths are to top of pipe/conduit, measured when the trench was open."
+ ]
+}

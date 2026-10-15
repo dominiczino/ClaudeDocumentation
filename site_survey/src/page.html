@@ -1,0 +1,80 @@
+<!doctype html>
+<!--
+  Site Survey Log: record transit sightings between landmarks and points of interest
+  (buried utilities etc.), solve their positions by least squares, and find them again.
+  Self-contained: open this file in a browser. No server, no network access needed.
+  Built from src/ by tools/build.py; edit the sources, not this file.
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Site Survey Log</title>
+<style>
+/*@@CSS@@*/
+</style>
+<style id="pageStyle"></style>
+</head>
+<body>
+<header class="topbar">
+  <div class="brand">Site Survey Log</div>
+  <div class="group">
+    <select id="projSelect" title="Surveys in this browser"></select>
+    <button id="btnNew">New</button>
+    <button id="btnExample" title="Load the example property">Example</button>
+    <button id="btnDup">Duplicate</button>
+    <button id="btnDel" class="danger">Delete</button>
+  </div>
+  <div class="group end">
+    <button id="btnImport">Import</button>
+    <button id="btnSave">Save JSON</button>
+    <div class="menu">
+      <button id="btnExport">Export ▾</button>
+      <div class="menu-list">
+        <button id="btnCsv">Coordinates (CSV)</button>
+        <button id="btnDxfPlan">Plan sheet (DXF, ANSI B)</button>
+        <button id="btnDxfWorld">Site at 1:1 (DXF, real coordinates)</button>
+      </div>
+    </div>
+    <button id="btnPrintPlan" title="ANSI B plan sheet, or Save as PDF from the print dialog">Print plan</button>
+    <button id="btnPrintReport" class="primary" title="Letter-size report with coordinates, field book and how-to-find cards">Print report</button>
+  </div>
+  <input type="file" id="fileInput" accept=".json,application/json" hidden>
+</header>
+
+<main>
+  <section class="left">
+    <nav class="tabs" id="tabs">
+      <button data-tab="project">Project</button>
+      <button data-tab="landmarks">Landmarks</button>
+      <button data-tab="book">Field book</button>
+      <button data-tab="points">Points</button>
+      <button data-tab="lines">Lines</button>
+      <button data-tab="find">Find</button>
+    </nav>
+    <div class="pane" id="pane"></div>
+  </section>
+  <section class="right">
+    <div class="map-tools">
+      <span id="summary" class="summary"></span>
+      <span class="spacer"></span>
+      <label><input type="checkbox" id="optSights" checked> Sight lines</label>
+      <label><input type="checkbox" id="optEll" checked> Uncertainty</label>
+      <label><input type="checkbox" id="optLabels" checked> Labels</label>
+      <button id="btnFit">Fit</button>
+    </div>
+    <svg id="mapSvg" xmlns="http://www.w3.org/2000/svg"></svg>
+    <div class="messages" id="messages"></div>
+  </section>
+</main>
+
+<div id="printArea"></div>
+
+<script type="application/json" id="font-data">@@FONTS@@</script>
+<script type="application/json" id="dxf-template">@@TEMPLATE@@</script>
+<script type="application/json" id="examples">@@EXAMPLES@@</script>
+<script>
+//@@JS@@
+</script>
+</body>
+</html>
