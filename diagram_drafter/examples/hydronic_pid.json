@@ -1,0 +1,470 @@
+{
+ "type": "pid",
+ "name": "Hydronic heating",
+ "notes": [
+  "Fill pressure 12 psi cold. Boiler outlet setpoint 160°F."
+ ],
+ "titleblock": {
+  "project": "1234 Example Street",
+  "drawn_by": "D. Panzino",
+  "dwg_no": "M-002",
+  "rev": "A"
+ },
+ "nodes": [
+  {
+   "id": "B",
+   "sym": "pid-boiler",
+   "x": 0,
+   "y": 0,
+   "tag": "B-1",
+   "props": {
+    "cap": "80 MBH",
+    "fuel": "NAT GAS"
+   },
+   "text": ""
+  },
+  {
+   "id": "TI1",
+   "sym": "pid-inst",
+   "x": 0,
+   "y": 0,
+   "tag": "",
+   "props": {
+    "fn": "TI",
+    "loop": "201"
+   },
+   "text": ""
+  },
+  {
+   "id": "JS",
+   "sym": "pid-junction",
+   "x": 0,
+   "y": 0,
+   "tag": "",
+   "props": {},
+   "text": ""
+  },
+  {
+   "id": "AS",
+   "sym": "pid-tank-v",
+   "x": 0,
+   "y": 0,
+   "tag": "AS-1",
+   "props": {
+    "name": "AIR SEP"
+   },
+   "text": ""
+  },
+  {
+   "id": "AV",
+   "sym": "pid-vent",
+   "x": 0,
+   "y": 0,
+   "tag": "",
+   "props": {},
+   "text": ""
+  },
+  {
+   "id": "JX",
+   "sym": "pid-junction",
+   "x": 0,
+   "y": 0,
+   "tag": "",
+   "props": {},
+   "text": ""
+  },
+  {
+   "id": "ET",
+   "sym": "pid-exptank",
+   "x": 0,
+   "y": 0,
+   "tag": "ET-1",
+   "props": {
+    "cap": "4.4 GAL",
+    "pre": "12 PSI"
+   },
+   "text": ""
+  },
+  {
+   "id": "P1",
+   "sym": "pid-pump",
+   "x": 0,
+   "y": 0,
+   "tag": "P-1",
+   "props": {
+    "flow": "8",
+    "head": "12",
+    "power": "1/12 HP"
+   },
+   "text": ""
+  },
+  {
+   "id": "PI1",
+   "sym": "pid-inst",
+   "x": 0,
+   "y": 0,
+   "tag": "",
+   "props": {
+    "fn": "PI",
+    "loop": "202"
+   },
+   "text": ""
+  },
+  {
+   "id": "JP",
+   "sym": "pid-junction",
+   "x": 0,
+   "y": 0,
+   "tag": "",
+   "props": {},
+   "text": ""
+  },
+  {
+   "id": "SH",
+   "sym": "pid-header",
+   "x": 0,
+   "y": 0,
+   "tag": "SUPPLY",
+   "props": {
+    "size": "1\""
+   },
+   "text": ""
+  },
+  {
+   "id": "ZV1",
+   "sym": "pid-motorized",
+   "x": 0,
+   "y": 0,
+   "tag": "ZV-1",
+   "props": {},
+   "text": ""
+  },
+  {
+   "id": "Z1",
+   "sym": "pid-radiator",
+   "x": 0,
+   "y": 0,
+   "tag": "ZONE 1",
+   "props": {
+    "len": "24 FT"
+   },
+   "text": ""
+  },
+  {
+   "id": "ZV2",
+   "sym": "pid-motorized",
+   "x": 0,
+   "y": 0,
+   "tag": "ZV-2",
+   "props": {},
+   "text": ""
+  },
+  {
+   "id": "Z2",
+   "sym": "pid-radiator",
+   "x": 0,
+   "y": 0,
+   "tag": "ZONE 2",
+   "props": {
+    "len": "18 FT"
+   },
+   "text": ""
+  },
+  {
+   "id": "ZV3",
+   "sym": "pid-motorized",
+   "x": 0,
+   "y": 0,
+   "tag": "ZV-3",
+   "props": {},
+   "text": ""
+  },
+  {
+   "id": "Z3",
+   "sym": "pid-radiator",
+   "x": 0,
+   "y": 0,
+   "tag": "ZONE 3",
+   "props": {
+    "len": "30 FT"
+   },
+   "text": ""
+  },
+  {
+   "id": "RH",
+   "sym": "pid-header",
+   "x": 0,
+   "y": 0,
+   "tag": "RETURN",
+   "props": {
+    "size": "1\""
+   },
+   "text": ""
+  },
+  {
+   "id": "BV",
+   "sym": "pid-balance",
+   "x": 0,
+   "y": 0,
+   "tag": "",
+   "props": {},
+   "text": ""
+  }
+ ],
+ "edges": [
+  {
+   "from": {
+    "n": "B",
+    "p": "E"
+   },
+   "to": {
+    "n": "JS",
+    "p": "W"
+   },
+   "label": "1\" HWS",
+   "arrow": "mid"
+  },
+  {
+   "from": {
+    "n": "JS",
+    "p": "N"
+   },
+   "to": {
+    "n": "TI1",
+    "p": "S"
+   },
+   "label": "",
+   "arrow": "none",
+   "style": "inst-conn"
+  },
+  {
+   "from": {
+    "n": "JS",
+    "p": "E"
+   },
+   "to": {
+    "n": "AS",
+    "p": "W"
+   },
+   "label": "",
+   "arrow": "none"
+  },
+  {
+   "from": {
+    "n": "AS",
+    "p": "N"
+   },
+   "to": {
+    "n": "AV",
+    "p": "S"
+   },
+   "label": "",
+   "arrow": "none"
+  },
+  {
+   "from": {
+    "n": "AS",
+    "p": "E"
+   },
+   "to": {
+    "n": "JX",
+    "p": "W"
+   },
+   "label": "",
+   "arrow": "none"
+  },
+  {
+   "from": {
+    "n": "JX",
+    "p": "N"
+   },
+   "to": {
+    "n": "ET",
+    "p": "S"
+   },
+   "label": "",
+   "arrow": "none"
+  },
+  {
+   "from": {
+    "n": "JX",
+    "p": "E"
+   },
+   "to": {
+    "n": "P1",
+    "p": "W"
+   },
+   "label": "",
+   "arrow": "none"
+  },
+  {
+   "from": {
+    "n": "P1",
+    "p": "E"
+   },
+   "to": {
+    "n": "JP",
+    "p": "W"
+   },
+   "label": "",
+   "arrow": "none"
+  },
+  {
+   "from": {
+    "n": "JP",
+    "p": "N"
+   },
+   "to": {
+    "n": "PI1",
+    "p": "S"
+   },
+   "label": "",
+   "arrow": "none",
+   "style": "inst-conn"
+  },
+  {
+   "from": {
+    "n": "JP",
+    "p": "E"
+   },
+   "to": {
+    "n": "SH",
+    "p": "line"
+   },
+   "label": "",
+   "arrow": "none"
+  },
+  {
+   "from": {
+    "n": "SH",
+    "p": "load"
+   },
+   "to": {
+    "n": "ZV1",
+    "p": "W"
+   },
+   "label": "",
+   "arrow": "none"
+  },
+  {
+   "from": {
+    "n": "ZV1",
+    "p": "E"
+   },
+   "to": {
+    "n": "Z1",
+    "p": "W"
+   },
+   "label": "",
+   "arrow": "none"
+  },
+  {
+   "from": {
+    "n": "Z1",
+    "p": "E"
+   },
+   "to": {
+    "n": "RH",
+    "p": "line"
+   },
+   "label": "",
+   "arrow": "none"
+  },
+  {
+   "from": {
+    "n": "SH",
+    "p": "load"
+   },
+   "to": {
+    "n": "ZV2",
+    "p": "W"
+   },
+   "label": "",
+   "arrow": "none"
+  },
+  {
+   "from": {
+    "n": "ZV2",
+    "p": "E"
+   },
+   "to": {
+    "n": "Z2",
+    "p": "W"
+   },
+   "label": "",
+   "arrow": "none"
+  },
+  {
+   "from": {
+    "n": "Z2",
+    "p": "E"
+   },
+   "to": {
+    "n": "RH",
+    "p": "line"
+   },
+   "label": "",
+   "arrow": "none"
+  },
+  {
+   "from": {
+    "n": "SH",
+    "p": "load"
+   },
+   "to": {
+    "n": "ZV3",
+    "p": "W"
+   },
+   "label": "",
+   "arrow": "none"
+  },
+  {
+   "from": {
+    "n": "ZV3",
+    "p": "E"
+   },
+   "to": {
+    "n": "Z3",
+    "p": "W"
+   },
+   "label": "",
+   "arrow": "none"
+  },
+  {
+   "from": {
+    "n": "Z3",
+    "p": "E"
+   },
+   "to": {
+    "n": "RH",
+    "p": "line"
+   },
+   "label": "",
+   "arrow": "none"
+  },
+  {
+   "from": {
+    "n": "RH",
+    "p": "load"
+   },
+   "to": {
+    "n": "BV",
+    "p": "W"
+   },
+   "label": "1\" HWR",
+   "arrow": "none"
+  },
+  {
+   "from": {
+    "n": "BV",
+    "p": "E"
+   },
+   "to": {
+    "n": "B",
+    "p": "W"
+   },
+   "label": "",
+   "arrow": "mid"
+  }
+ ]
+}

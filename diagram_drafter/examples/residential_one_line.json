@@ -1,0 +1,617 @@
+{
+ "type": "oneline",
+ "name": "Residence electrical service",
+ "notes": [
+  "All work per NEC 2023 and local amendments.",
+  "Generator transfer switch is service-entrance rated with integral 200A main.",
+  "PV system backfeed per NEC 705.12(B)(3)(2), 120% rule: 200A bus, 200A main, 40A PV breaker."
+ ],
+ "titleblock": {
+  "project": "1234 Example Street",
+  "drawn_by": "D. Panzino",
+  "dwg_no": "E-001",
+  "rev": "A"
+ },
+ "nodes": [
+  {
+   "id": "U",
+   "sym": "ol-utility",
+   "x": 0,
+   "y": 0,
+   "tag": "",
+   "props": {
+    "service": "120/240V 1Φ 3W",
+    "utility": "PG&E"
+   },
+   "text": ""
+  },
+  {
+   "id": "M",
+   "sym": "ol-meter",
+   "x": 0,
+   "y": 0,
+   "tag": "METER",
+   "props": {},
+   "text": ""
+  },
+  {
+   "id": "G",
+   "sym": "ol-generator",
+   "x": 0,
+   "y": 0,
+   "tag": "GEN-1",
+   "props": {
+    "kw": "22",
+    "volts": "120/240V",
+    "fuel": "NAT GAS"
+   },
+   "text": ""
+  },
+  {
+   "id": "ATS",
+   "sym": "ol-ats",
+   "x": 0,
+   "y": 0,
+   "tag": "ATS-1",
+   "props": {
+    "amps": "200",
+    "poles": "2P",
+    "kind": "ATS"
+   },
+   "text": "SERVICE RATED"
+  },
+  {
+   "id": "MB",
+   "sym": "ol-breaker",
+   "x": 0,
+   "y": 0,
+   "tag": "MAIN",
+   "props": {
+    "amps": "200",
+    "poles": "2P"
+   },
+   "text": ""
+  },
+  {
+   "id": "PA",
+   "sym": "ol-bus",
+   "x": 0,
+   "y": 0,
+   "tag": "PANEL A",
+   "props": {
+    "kind": "PANELBOARD",
+    "amps": "200",
+    "main": "MB",
+    "volts": "120/240V 1Φ 3W",
+    "ckts": "40"
+   },
+   "text": ""
+  },
+  {
+   "id": "B1",
+   "sym": "ol-breaker",
+   "x": 0,
+   "y": 0,
+   "tag": "",
+   "props": {
+    "amps": "60",
+    "poles": "2P"
+   },
+   "text": ""
+  },
+  {
+   "id": "PB",
+   "sym": "ol-bus",
+   "x": 0,
+   "y": 0,
+   "tag": "PANEL B (GARAGE)",
+   "props": {
+    "kind": "PANELBOARD",
+    "amps": "100",
+    "main": "MLO",
+    "volts": "120/240V",
+    "ckts": "24"
+   },
+   "text": ""
+  },
+  {
+   "id": "B11",
+   "sym": "ol-breaker",
+   "x": 0,
+   "y": 0,
+   "tag": "",
+   "props": {
+    "amps": "50",
+    "poles": "2P",
+    "type": "GFCI"
+   },
+   "text": ""
+  },
+  {
+   "id": "EV",
+   "sym": "ol-load",
+   "x": 0,
+   "y": 0,
+   "tag": "EVSE-1",
+   "props": {
+    "name": "EVSE",
+    "rating": "40A / 9.6 kW"
+   },
+   "text": ""
+  },
+  {
+   "id": "B12",
+   "sym": "ol-breaker",
+   "x": 0,
+   "y": 0,
+   "tag": "",
+   "props": {
+    "amps": "20",
+    "poles": "1P",
+    "type": "GFCI"
+   },
+   "text": ""
+  },
+  {
+   "id": "RC",
+   "sym": "ol-load",
+   "x": 0,
+   "y": 0,
+   "tag": "",
+   "props": {
+    "name": "RECEPT",
+    "rating": "GARAGE"
+   },
+   "text": ""
+  },
+  {
+   "id": "B2",
+   "sym": "ol-breaker",
+   "x": 0,
+   "y": 0,
+   "tag": "",
+   "props": {
+    "amps": "40",
+    "poles": "2P",
+    "type": "BACKFEED"
+   },
+   "text": ""
+  },
+  {
+   "id": "DS2",
+   "sym": "ol-switch",
+   "x": 0,
+   "y": 0,
+   "tag": "PV DISC",
+   "props": {
+    "amps": "60",
+    "poles": "2P",
+    "enc": "NEMA 3R"
+   },
+   "text": ""
+  },
+  {
+   "id": "INV",
+   "sym": "ol-inverter",
+   "x": 0,
+   "y": 0,
+   "tag": "INV-1",
+   "props": {
+    "kw": "7.6",
+    "volts": "240V",
+    "kind": "STRING"
+   },
+   "text": ""
+  },
+  {
+   "id": "PV",
+   "sym": "ol-pv",
+   "x": 0,
+   "y": 0,
+   "tag": "PV-1",
+   "props": {
+    "kw": "8.4",
+    "modules": "(21) 400W"
+   },
+   "text": ""
+  },
+  {
+   "id": "B3",
+   "sym": "ol-breaker",
+   "x": 0,
+   "y": 0,
+   "tag": "",
+   "props": {
+    "amps": "40",
+    "poles": "2P"
+   },
+   "text": ""
+  },
+  {
+   "id": "DS3",
+   "sym": "ol-switch",
+   "x": 0,
+   "y": 0,
+   "tag": "AC DISC",
+   "props": {
+    "amps": "60",
+    "poles": "2P",
+    "enc": "NEMA 3R"
+   },
+   "text": ""
+  },
+  {
+   "id": "AC",
+   "sym": "ol-load",
+   "x": 0,
+   "y": 0,
+   "tag": "",
+   "props": {
+    "name": "A/C",
+    "rating": "MCA 28A"
+   },
+   "text": ""
+  },
+  {
+   "id": "B4",
+   "sym": "ol-breaker",
+   "x": 0,
+   "y": 0,
+   "tag": "",
+   "props": {
+    "amps": "30",
+    "poles": "2P"
+   },
+   "text": ""
+  },
+  {
+   "id": "WH",
+   "sym": "ol-load",
+   "x": 0,
+   "y": 0,
+   "tag": "",
+   "props": {
+    "name": "WH",
+    "rating": "4.5 kW"
+   },
+   "text": ""
+  },
+  {
+   "id": "B5",
+   "sym": "ol-breaker",
+   "x": 0,
+   "y": 0,
+   "tag": "",
+   "props": {
+    "amps": "50",
+    "poles": "2P"
+   },
+   "text": ""
+  },
+  {
+   "id": "RG",
+   "sym": "ol-load",
+   "x": 0,
+   "y": 0,
+   "tag": "",
+   "props": {
+    "name": "RANGE",
+    "rating": "12 kW"
+   },
+   "text": ""
+  },
+  {
+   "id": "SPD",
+   "sym": "ol-spd",
+   "x": 0,
+   "y": 0,
+   "tag": "SPD",
+   "props": {
+    "kind": "TYPE 2"
+   },
+   "text": ""
+  },
+  {
+   "id": "GND",
+   "sym": "ol-ground",
+   "x": 0,
+   "y": 0,
+   "tag": "",
+   "props": {
+    "kind": "(2) GROUND RODS"
+   },
+   "text": ""
+  }
+ ],
+ "edges": [
+  {
+   "from": {
+    "n": "U",
+    "p": "S"
+   },
+   "to": {
+    "n": "M",
+    "p": "N"
+   },
+   "label": "(3) 4/0 AL URD",
+   "arrow": "none"
+  },
+  {
+   "from": {
+    "n": "M",
+    "p": "S"
+   },
+   "to": {
+    "n": "ATS",
+    "p": "N1"
+   },
+   "label": "",
+   "arrow": "none"
+  },
+  {
+   "from": {
+    "n": "G",
+    "p": "S"
+   },
+   "to": {
+    "n": "ATS",
+    "p": "N2"
+   },
+   "label": "(3) #2 CU + #6 G",
+   "arrow": "none"
+  },
+  {
+   "from": {
+    "n": "ATS",
+    "p": "S"
+   },
+   "to": {
+    "n": "MB",
+    "p": "N"
+   },
+   "label": "",
+   "arrow": "none"
+  },
+  {
+   "from": {
+    "n": "MB",
+    "p": "S"
+   },
+   "to": {
+    "n": "PA",
+    "p": "line"
+   },
+   "label": "",
+   "arrow": "none"
+  },
+  {
+   "from": {
+    "n": "PA",
+    "p": "load"
+   },
+   "to": {
+    "n": "B1",
+    "p": "N"
+   },
+   "label": "",
+   "arrow": "none"
+  },
+  {
+   "from": {
+    "n": "B1",
+    "p": "S"
+   },
+   "to": {
+    "n": "PB",
+    "p": "line"
+   },
+   "label": "(3) #6 CU + #10 G\n1\" PVC",
+   "arrow": "none"
+  },
+  {
+   "from": {
+    "n": "PB",
+    "p": "load"
+   },
+   "to": {
+    "n": "B11",
+    "p": "N"
+   },
+   "label": "",
+   "arrow": "none"
+  },
+  {
+   "from": {
+    "n": "B11",
+    "p": "S"
+   },
+   "to": {
+    "n": "EV",
+    "p": "N"
+   },
+   "label": "(2) #8 + #10 G",
+   "arrow": "none"
+  },
+  {
+   "from": {
+    "n": "PB",
+    "p": "load"
+   },
+   "to": {
+    "n": "B12",
+    "p": "N"
+   },
+   "label": "",
+   "arrow": "none"
+  },
+  {
+   "from": {
+    "n": "B12",
+    "p": "S"
+   },
+   "to": {
+    "n": "RC",
+    "p": "N"
+   },
+   "label": "",
+   "arrow": "none"
+  },
+  {
+   "from": {
+    "n": "PA",
+    "p": "load"
+   },
+   "to": {
+    "n": "B2",
+    "p": "N"
+   },
+   "label": "",
+   "arrow": "none"
+  },
+  {
+   "from": {
+    "n": "B2",
+    "p": "S"
+   },
+   "to": {
+    "n": "DS2",
+    "p": "N"
+   },
+   "label": "",
+   "arrow": "none"
+  },
+  {
+   "from": {
+    "n": "DS2",
+    "p": "S"
+   },
+   "to": {
+    "n": "INV",
+    "p": "S"
+   },
+   "label": "",
+   "arrow": "none"
+  },
+  {
+   "from": {
+    "n": "INV",
+    "p": "N"
+   },
+   "to": {
+    "n": "PV",
+    "p": "S"
+   },
+   "label": "DC",
+   "arrow": "none"
+  },
+  {
+   "from": {
+    "n": "PA",
+    "p": "load"
+   },
+   "to": {
+    "n": "B3",
+    "p": "N"
+   },
+   "label": "",
+   "arrow": "none"
+  },
+  {
+   "from": {
+    "n": "B3",
+    "p": "S"
+   },
+   "to": {
+    "n": "DS3",
+    "p": "N"
+   },
+   "label": "",
+   "arrow": "none"
+  },
+  {
+   "from": {
+    "n": "DS3",
+    "p": "S"
+   },
+   "to": {
+    "n": "AC",
+    "p": "N"
+   },
+   "label": "",
+   "arrow": "none"
+  },
+  {
+   "from": {
+    "n": "PA",
+    "p": "load"
+   },
+   "to": {
+    "n": "B4",
+    "p": "N"
+   },
+   "label": "",
+   "arrow": "none"
+  },
+  {
+   "from": {
+    "n": "B4",
+    "p": "S"
+   },
+   "to": {
+    "n": "WH",
+    "p": "N"
+   },
+   "label": "",
+   "arrow": "none"
+  },
+  {
+   "from": {
+    "n": "PA",
+    "p": "load"
+   },
+   "to": {
+    "n": "B5",
+    "p": "N"
+   },
+   "label": "",
+   "arrow": "none"
+  },
+  {
+   "from": {
+    "n": "B5",
+    "p": "S"
+   },
+   "to": {
+    "n": "RG",
+    "p": "N"
+   },
+   "label": "",
+   "arrow": "none"
+  },
+  {
+   "from": {
+    "n": "PA",
+    "p": "load"
+   },
+   "to": {
+    "n": "SPD",
+    "p": "N"
+   },
+   "label": "",
+   "arrow": "none"
+  },
+  {
+   "from": {
+    "n": "PA",
+    "p": "load"
+   },
+   "to": {
+    "n": "GND",
+    "p": "N"
+   },
+   "label": "#4 CU GEC",
+   "arrow": "none",
+   "style": "ground"
+  }
+ ]
+}

@@ -1,0 +1,102 @@
+<!doctype html>
+<!--
+  Diagram Drafter: one-line diagrams and P&IDs on ANSI B (17x11 landscape) sheets.
+  Self-contained: open this file in a browser. No server, no network access needed.
+  Built from src/ by tools/build.py; edit the sources, not this file.
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Diagram Drafter</title>
+<style>
+/*@@CSS@@*/
+</style>
+</head>
+<body>
+<header class="topbar">
+  <div class="brand">Diagram Drafter <span>ANSI B · 17×11</span></div>
+  <div class="group">
+    <select id="docSelect" title="Drawings in this browser"></select>
+    <div class="menu">
+      <button id="btnNew">New ▾</button>
+      <div class="menu-list" id="newMenu">
+        <button data-new="oneline">One-line diagram</button>
+        <button data-new="pid">P&amp;ID</button>
+        <hr>
+        <div class="menu-head">Examples</div>
+        <div id="exampleList"></div>
+      </div>
+    </div>
+    <button id="btnDup" title="Duplicate this drawing">Duplicate</button>
+    <button id="btnDelDoc" class="danger" title="Delete this drawing">Delete</button>
+  </div>
+  <div class="group">
+    <button id="btnUndo" title="Undo (Ctrl+Z)">↶</button>
+    <button id="btnRedo" title="Redo (Ctrl+Shift+Z)">↷</button>
+  </div>
+  <div class="group">
+    <button id="btnArrange" class="accent" title="Lay out the whole drawing automatically (A)">Auto-arrange</button>
+    <button id="btnRoute" title="Re-route all connections">Re-route</button>
+    <button id="btnCheck" title="Check the layout for problems">Check</button>
+  </div>
+  <div class="group right">
+    <button id="btnImport">Import</button>
+    <button id="btnSaveJson">Save JSON</button>
+    <button id="btnPrint" title="Print at 17×11, or Save as PDF from the print dialog">Print / PDF</button>
+    <button id="btnDxf" class="primary">Download DXF</button>
+  </div>
+  <input type="file" id="fileInput" accept=".json,application/json" hidden>
+</header>
+
+<main>
+  <aside class="palette">
+    <input id="paletteSearch" type="search" placeholder="Search symbols…">
+    <p class="hint" id="paletteHint">Click a symbol to place it. With a symbol selected, a click adds the new one connected after it; with a line selected, it is inserted into the line.</p>
+    <div id="paletteList"></div>
+  </aside>
+
+  <section class="stage">
+    <div class="canvas-wrap" id="canvasWrap">
+      <svg id="canvas" xmlns="http://www.w3.org/2000/svg">
+        <rect id="sheetBg" x="0" y="0" width="17" height="11" fill="#fff"/>
+        <g id="gridLayer"></g>
+        <g id="content"></g>
+        <g id="overlay"></g>
+      </svg>
+    </div>
+    <div class="statusbar">
+      <span id="status">Ready</span>
+      <span class="spacer"></span>
+      <label class="toggle"><input type="checkbox" id="optKeep"> Show clearances</label>
+      <label class="toggle"><input type="checkbox" id="optGrid" checked> Grid</label>
+      <label class="toggle" title="Push dropped symbols clear of their neighbours"><input type="checkbox" id="optAvoid" checked> Avoid overlaps</label>
+      <span class="zoom">
+        <button id="zoomOut" title="Zoom out (−)">−</button>
+        <span id="zoomLabel">100%</span>
+        <button id="zoomIn" title="Zoom in (+)">+</button>
+        <button id="zoomFit" title="Fit sheet (0)">Fit</button>
+      </span>
+    </div>
+  </section>
+
+  <aside class="props" id="props"></aside>
+</main>
+
+<div class="dialog" id="checkDialog" hidden>
+  <div class="dialog-box">
+    <div class="dialog-head"><b>Layout check</b><button id="checkClose">×</button></div>
+    <div id="checkList"></div>
+  </div>
+</div>
+
+<div id="printSheet"></div>
+
+<script type="application/json" id="font-data">@@FONTS@@</script>
+<script type="application/json" id="dxf-template">@@TEMPLATE@@</script>
+<script type="application/json" id="examples">@@EXAMPLES@@</script>
+<script>
+//@@JS@@
+</script>
+</body>
+</html>

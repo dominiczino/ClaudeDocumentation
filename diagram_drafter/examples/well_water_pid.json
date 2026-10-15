@@ -1,0 +1,505 @@
+{
+ "type": "pid",
+ "name": "Domestic water system",
+ "notes": [
+  "Pressure switch 40/60 psi. Pressure tank pre-charge 38 psi.",
+  "Provide unions at all equipment connections."
+ ],
+ "titleblock": {
+  "project": "1234 Example Street",
+  "drawn_by": "D. Panzino",
+  "dwg_no": "M-001",
+  "rev": "A"
+ },
+ "nodes": [
+  {
+   "id": "W",
+   "sym": "pid-source",
+   "x": 0,
+   "y": 0,
+   "tag": "",
+   "props": {
+    "name": "WELL"
+   },
+   "text": ""
+  },
+  {
+   "id": "P1",
+   "sym": "pid-pump",
+   "x": 0,
+   "y": 0,
+   "tag": "P-1",
+   "props": {
+    "flow": "10",
+    "head": "230",
+    "power": "1 HP"
+   },
+   "text": "SUBMERSIBLE"
+  },
+  {
+   "id": "CV",
+   "sym": "pid-check",
+   "x": 0,
+   "y": 0,
+   "tag": "",
+   "props": {
+    "size": "1\""
+   },
+   "text": ""
+  },
+  {
+   "id": "J1",
+   "sym": "pid-junction",
+   "x": 0,
+   "y": 0,
+   "tag": "",
+   "props": {},
+   "text": ""
+  },
+  {
+   "id": "PT",
+   "sym": "pid-exptank",
+   "x": 0,
+   "y": 0,
+   "tag": "PT-1",
+   "props": {
+    "cap": "44 GAL",
+    "pre": "38 PSI"
+   },
+   "text": ""
+  },
+  {
+   "id": "J2",
+   "sym": "pid-junction",
+   "x": 0,
+   "y": 0,
+   "tag": "",
+   "props": {},
+   "text": ""
+  },
+  {
+   "id": "PI1",
+   "sym": "pid-inst",
+   "x": 0,
+   "y": 0,
+   "tag": "",
+   "props": {
+    "fn": "PI",
+    "loop": "101"
+   },
+   "text": ""
+  },
+  {
+   "id": "PS1",
+   "sym": "pid-inst",
+   "x": 0,
+   "y": 0,
+   "tag": "",
+   "props": {
+    "fn": "PS",
+    "loop": "101"
+   },
+   "text": ""
+  },
+  {
+   "id": "BV",
+   "sym": "pid-ball",
+   "x": 0,
+   "y": 0,
+   "tag": "",
+   "props": {
+    "size": "1\""
+   },
+   "text": "MAIN SHUTOFF"
+  },
+  {
+   "id": "STR",
+   "sym": "pid-strainer",
+   "x": 0,
+   "y": 0,
+   "tag": "",
+   "props": {},
+   "text": ""
+  },
+  {
+   "id": "FLT",
+   "sym": "pid-filter",
+   "x": 0,
+   "y": 0,
+   "tag": "F-1",
+   "props": {
+    "note": "SEDIMENT"
+   },
+   "text": ""
+  },
+  {
+   "id": "WS",
+   "sym": "pid-tank-v",
+   "x": 0,
+   "y": 0,
+   "tag": "WS-1",
+   "props": {
+    "name": "SOFTENER",
+    "cap": "48K GRAIN"
+   },
+   "text": ""
+  },
+  {
+   "id": "HDR",
+   "sym": "pid-header",
+   "x": 0,
+   "y": 0,
+   "tag": "CW HEADER",
+   "props": {
+    "size": "1\""
+   },
+   "text": ""
+  },
+  {
+   "id": "CWF",
+   "sym": "pid-fixture",
+   "x": 0,
+   "y": 0,
+   "tag": "",
+   "props": {
+    "name": "CW FIXTURES"
+   },
+   "text": ""
+  },
+  {
+   "id": "BF",
+   "sym": "pid-backflow",
+   "x": 0,
+   "y": 0,
+   "tag": "",
+   "props": {
+    "kind": "PVB",
+    "size": "3/4\""
+   },
+   "text": ""
+  },
+  {
+   "id": "IRR",
+   "sym": "pid-fixture",
+   "x": 0,
+   "y": 0,
+   "tag": "",
+   "props": {
+    "name": "IRRIGATION"
+   },
+   "text": ""
+  },
+  {
+   "id": "WH",
+   "sym": "pid-wh",
+   "x": 0,
+   "y": 0,
+   "tag": "WH-1",
+   "props": {
+    "cap": "50 GAL",
+    "fuel": "40 MBH GAS"
+   },
+   "text": ""
+  },
+  {
+   "id": "TP",
+   "sym": "pid-relief",
+   "x": 0,
+   "y": 0,
+   "tag": "",
+   "props": {
+    "set": "T&P 150 PSI / 210°F"
+   },
+   "text": ""
+  },
+  {
+   "id": "DR",
+   "sym": "pid-offpage",
+   "x": 0,
+   "y": 0,
+   "tag": "",
+   "props": {
+    "name": "TO DRAIN"
+   },
+   "text": ""
+  },
+  {
+   "id": "TMV",
+   "sym": "pid-3way",
+   "x": 0,
+   "y": 0,
+   "tag": "TMV-1",
+   "props": {
+    "fn": "TMV 120°F"
+   },
+   "text": ""
+  },
+  {
+   "id": "HWF",
+   "sym": "pid-fixture",
+   "x": 0,
+   "y": 0,
+   "tag": "",
+   "props": {
+    "name": "HW FIXTURES"
+   },
+   "text": ""
+  }
+ ],
+ "edges": [
+  {
+   "from": {
+    "n": "W",
+    "p": "E"
+   },
+   "to": {
+    "n": "P1",
+    "p": "W"
+   },
+   "label": "1-1/4\" PE",
+   "arrow": "none"
+  },
+  {
+   "from": {
+    "n": "P1",
+    "p": "E"
+   },
+   "to": {
+    "n": "CV",
+    "p": "W"
+   },
+   "label": "",
+   "arrow": "none"
+  },
+  {
+   "from": {
+    "n": "CV",
+    "p": "E"
+   },
+   "to": {
+    "n": "J1",
+    "p": "W"
+   },
+   "label": "",
+   "arrow": "none"
+  },
+  {
+   "from": {
+    "n": "J1",
+    "p": "N"
+   },
+   "to": {
+    "n": "PT",
+    "p": "S"
+   },
+   "label": "",
+   "arrow": "none"
+  },
+  {
+   "from": {
+    "n": "J1",
+    "p": "E"
+   },
+   "to": {
+    "n": "J2",
+    "p": "W"
+   },
+   "label": "",
+   "arrow": "none"
+  },
+  {
+   "from": {
+    "n": "J2",
+    "p": "N"
+   },
+   "to": {
+    "n": "PI1",
+    "p": "S"
+   },
+   "label": "",
+   "arrow": "none",
+   "style": "inst-conn"
+  },
+  {
+   "from": {
+    "n": "J2",
+    "p": "S"
+   },
+   "to": {
+    "n": "PS1",
+    "p": "N"
+   },
+   "label": "",
+   "arrow": "none",
+   "style": "inst-conn"
+  },
+  {
+   "from": {
+    "n": "J2",
+    "p": "E"
+   },
+   "to": {
+    "n": "BV",
+    "p": "W"
+   },
+   "label": "",
+   "arrow": "none"
+  },
+  {
+   "from": {
+    "n": "BV",
+    "p": "E"
+   },
+   "to": {
+    "n": "STR",
+    "p": "W"
+   },
+   "label": "",
+   "arrow": "none"
+  },
+  {
+   "from": {
+    "n": "STR",
+    "p": "E"
+   },
+   "to": {
+    "n": "FLT",
+    "p": "W"
+   },
+   "label": "",
+   "arrow": "none"
+  },
+  {
+   "from": {
+    "n": "FLT",
+    "p": "E"
+   },
+   "to": {
+    "n": "WS",
+    "p": "W"
+   },
+   "label": "",
+   "arrow": "none"
+  },
+  {
+   "from": {
+    "n": "WS",
+    "p": "E"
+   },
+   "to": {
+    "n": "HDR",
+    "p": "line"
+   },
+   "label": "1\" CW",
+   "arrow": "mid"
+  },
+  {
+   "from": {
+    "n": "HDR",
+    "p": "load"
+   },
+   "to": {
+    "n": "CWF",
+    "p": "W"
+   },
+   "label": "",
+   "arrow": "none"
+  },
+  {
+   "from": {
+    "n": "HDR",
+    "p": "load"
+   },
+   "to": {
+    "n": "BF",
+    "p": "W"
+   },
+   "label": "",
+   "arrow": "none"
+  },
+  {
+   "from": {
+    "n": "BF",
+    "p": "E"
+   },
+   "to": {
+    "n": "IRR",
+    "p": "W"
+   },
+   "label": "",
+   "arrow": "none"
+  },
+  {
+   "from": {
+    "n": "HDR",
+    "p": "load"
+   },
+   "to": {
+    "n": "WH",
+    "p": "W"
+   },
+   "label": "3/4\" CW",
+   "arrow": "none"
+  },
+  {
+   "from": {
+    "n": "WH",
+    "p": "N"
+   },
+   "to": {
+    "n": "TP",
+    "p": "S"
+   },
+   "label": "",
+   "arrow": "none"
+  },
+  {
+   "from": {
+    "n": "TP",
+    "p": "E"
+   },
+   "to": {
+    "n": "DR",
+    "p": "W"
+   },
+   "label": "",
+   "arrow": "none"
+  },
+  {
+   "from": {
+    "n": "WH",
+    "p": "E"
+   },
+   "to": {
+    "n": "TMV",
+    "p": "W"
+   },
+   "label": "3/4\" HW",
+   "arrow": "none"
+  },
+  {
+   "from": {
+    "n": "HDR",
+    "p": "load"
+   },
+   "to": {
+    "n": "TMV",
+    "p": "S"
+   },
+   "label": "",
+   "arrow": "none"
+  },
+  {
+   "from": {
+    "n": "TMV",
+    "p": "E"
+   },
+   "to": {
+    "n": "HWF",
+    "p": "W"
+   },
+   "label": "3/4\" TW",
+   "arrow": "mid"
+  }
+ ]
+}
