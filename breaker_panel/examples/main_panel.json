@@ -1,0 +1,52 @@
+{
+  "name": "Panel A - Main",
+  "location": "Garage, north wall",
+  "manufacturer": "Square D",
+  "model": "QO140M200",
+  "voltage": "120/240V 1Φ 3W",
+  "phases": 1,
+  "main": {"kind": "breaker", "amps": 200},
+  "bus_amps": 200,
+  "fed_from": "Utility meter",
+  "spaces": 40,
+  "numbering": "odd_even",
+  "breakers": [
+    {"space": 1, "kind": "double", "amps": 40, "label": "Range / oven"},
+    {"space": 2, "kind": "double", "amps": 30, "label": "Clothes dryer"},
+    {"space": 5, "kind": "single", "amps": 20, "label": "Kitchen countertop receptacles (left of sink)", "feature": "DF"},
+    {"space": 7, "kind": "single", "amps": 20, "label": "Kitchen countertop receptacles (right of sink)", "feature": "DF"},
+    {"space": 6, "kind": "double", "amps": 60, "label": "Subpanel B - detached workshop", "feature": ""},
+    {"space": 9, "kind": "single", "amps": 20, "label": "Dishwasher", "tie_below": true},
+    {"space": 11, "kind": "single", "amps": 20, "label": "Garbage disposal (MWBC with ckt 9)"},
+    {"space": 10, "kind": "tandem", "a": {"amps": 15, "label": "Hall & stair lighting"}, "b": {"amps": 15, "label": "Front porch lights"}},
+    {"space": 12, "kind": "tandem", "a": {"amps": 20, "label": "Garage receptacles", "feature": "GFCI"}, "b": {"amps": 15, "label": "Garage door opener"}},
+    {"space": 13, "kind": "single", "amps": 20, "label": "Refrigerator"},
+    {"space": 14, "kind": "quad", "a": {"amps": 30, "label": "Water heater"}, "b": {"amps": 20, "label": "Well pump"}},
+    {"space": 15, "kind": "single", "amps": 15, "label": "Bedroom 1", "feature": "AFCI"},
+    {"space": 17, "kind": "single", "amps": 15, "label": "Bedroom 2", "feature": "AFCI"},
+    {"space": 18, "kind": "double", "amps": 40, "label": "A/C condenser"},
+    {"space": 19, "kind": "single", "amps": 15, "label": "Primary bedroom", "feature": "AFCI"},
+    {"space": 21, "kind": "single", "amps": 20, "label": "Bathrooms receptacles", "feature": "GFCI"},
+    {"space": 22, "kind": "single", "amps": 15, "label": "Furnace / air handler"},
+    {"space": 23, "kind": "single", "amps": 15, "label": "Living room & dining room", "feature": "AFCI"},
+    {"space": 24, "kind": "single", "amps": 20, "label": "Laundry receptacle"},
+    {"space": 25, "kind": "single", "amps": 20, "label": "Microwave"},
+    {"space": 26, "kind": "single", "amps": 20, "label": "Exterior receptacles", "feature": "GFCI"},
+    {"space": 27, "kind": "single", "amps": 15, "label": "Smoke detectors"},
+    {"space": 28, "kind": "single", "amps": 20, "label": "Spare"},
+    {"space": 29, "kind": "double", "amps": 50, "label": "EV charger (garage)", "feature": ""},
+    {"space": 30, "kind": "double", "amps": 20, "label": "Whole-house surge protector", "feature": "SPD"}
+  ],
+  "notes": [
+    "Circuits 9 and 11 are a multi-wire branch circuit sharing a neutral; handle tie required.",
+    "Verify circuit identification with a circuit tracer before working on any circuit.",
+    "Grounding electrode: two ground rods, 6 ft apart, at the meter base."
+  ],
+  "titleblock": {
+    "project": "1234 Example Street",
+    "drawn_by": "D. Panzino",
+    "dwg_no": "E-101",
+    "rev": "A",
+    "sheet": "1 OF 2"
+  }
+}
