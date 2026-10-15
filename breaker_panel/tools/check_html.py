@@ -32,6 +32,8 @@ CASES = {
                 "breakers": [{"space": i, "kind": "triple", "amps": 100, "label": "Long " * 30} for i in (1, 4, 43)]
                 + [{"space": 7, "kind": "tandem", "a": {"amps": 15, "label": "A " * 40}, "b": {"amps": 15}}],
                 "notes": ["n " * 200] * 3},
+    "font_jost": {**EXAMPLE, "font": "jost"},
+    "font_arial": {**EXAMPLE, "font": "arial"},
     "special_chars": {"spaces": 4, "name": "Shop <A> & \"B\" $& 100%%",
                       "breakers": [{"space": 1, "kind": "single", "amps": 20, "label": "$1 lamp %%c & <tag>"}]},
 }
@@ -56,6 +58,9 @@ def main():
         page.wait_for_selector("#sheet svg")
         if errors:
             failures.append(f"page errors: {errors}")
+        for fam in ("PD B612", "PD Jost"):
+            if not page.evaluate("f => document.fonts.check(`12px '${f}`) && document.fonts.check(`bold 12px '${f}`)", fam):
+                failures.append(f"embedded font {fam} not loaded")
 
         for name, cfg in CASES.items():
             dxf = page.evaluate("cfg => PanelDrafter.sheetToDxf(PanelDrafter.buildSheet(cfg).sheet)", cfg)
@@ -68,6 +73,9 @@ def main():
                 failures.append(f"{name}: content outside frame {ext}")
             if "ANSI B" not in doc.layouts:
                 failures.append(f"{name}: no ANSI B layout")
+            want = {"jost": "Jost-Regular.ttf", "arial": "arial.ttf"}.get(cfg.get("font"), "B612-Regular.ttf")
+            if doc.styles.get("PANEL-STD").dxf.font != want:
+                failures.append(f"{name}: text style font {doc.styles.get('PANEL-STD').dxf.font}, want {want}")
             n = len(doc.modelspace())
             print(f"ok  {name:14s} {n:5d} entities  handseed {doc.header['$HANDSEED']}")
             if a.out and name == "example":

@@ -37,9 +37,15 @@ drive.
 * Layers are split by function (`FRAME`, `TITLE`, `ENCLOSURE`, `BREAKER`, `HANDLE`, `TIE`,
   `TABLE`, `TABLE-GRID`, `HATCH`, `TEXT`, ...). Each layer sets its own lineweight. Turn on
   lineweight display and plot with `monochrome.ctb` for a black-and-white print.
-* Text uses Arial (`arial.ttf` / `arialbd.ttf`). The page measures text with the browser's Arial
-  (or Liberation Sans, which has the same metrics), so labels fit their cells in CAD too. Labels that
-  are too long shrink, then wrap, then get truncated with "…".
+* **Fonts**: choose B612 (default), Jost (a free Futura-style font) or Arial under *Title block → Font*.
+  B612 and Jost are embedded in the page, so the preview and print are exact on any machine. The
+  DXF names the font files (`B612-Regular.ttf` / `B612-Bold.ttf`, `Jost-Regular.ttf` /
+  `Jost-Bold.ttf`, or `arial.ttf` / `arialbd.ttf`). **Install those fonts on the CAD computer**,
+  otherwise CAD substitutes a different font and the text won't fit the cells as drawn. Download
+  links are under the font picker, and the same files are in `fonts/` (SIL Open Font License).
+  Jost has no Φ, so "1Φ" prints as "1PH" with that font.
+* Text is measured in the chosen font, so labels fit their cells. Labels that are too long shrink,
+  then wrap, then get truncated with "…".
 * DWG isn't written directly; any CAD program can open the DXF and save it as DWG. The free
   [ODA File Converter](https://www.opendesign.com/guestfiles/oda_file_converter) also converts it.
 
@@ -56,7 +62,8 @@ See `examples/main_panel.json` (import it with **Import JSON**). Each breaker is
 | `tandem` | 1      | `a` / `b`: `{amps, label, feature}`                        |
 | `quad`   | 2      | `a` = outer 2-pole, `b` = inner 2-pole: `{amps, label}`    |
 
-`feature` is one of `""`, `GFCI`, `AFCI`, `DF` (dual function), `SPD`. Any space not listed is drawn
+`feature` is one of `""`, `GFCI`, `AFCI`, `DF` (dual function), `SPD`. The top-level `font` is
+`b612`, `jost` or `arial`. Any space not listed is drawn
 as an open space / filler.
 
 ## Development
@@ -68,6 +75,10 @@ need Python with `ezdxf` and `playwright`:
   linetypes, text styles, ANSI B layout). Run it after changing layers or styles, then paste its
   output into `<script id="dxf-template">`. Layer colors and lineweights are also listed in
   `LAYERS` in the page script for the preview, so keep the two lists in sync.
+* `fonts/` holds the embedded TTFs. They are subset to Latin, Greek and typographic punctuation.
+  The Jost files are static Regular/Bold instances of the variable font, with overlapping contours
+  removed so they fill correctly in CAD. To change them, re-embed them as base64 in
+  `<script id="font-data">`.
 * `tools/check_html.py` loads the page in headless Chromium, generates DXFs for a set of configs,
   and checks each one with ezdxf: it must read back, pass ezdxf's validation check, and stay inside
   the sheet frame. It also checks that bad configs are rejected.
