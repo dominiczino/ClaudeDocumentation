@@ -1,0 +1,1693 @@
+<!doctype html>
+<!--
+  Panel Directory Drafter - breaker panel directory drawings on ANSI B (11x17) sheets.
+  Self-contained: open this file in a browser. No server, no network access needed.
+  Output: DXF (R2013, inches, 1:1, with an "ANSI B" paper-space layout) and print/PDF.
+  Panels are kept in this browser's localStorage; use Save JSON for real backups.
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Panel Directory Drafter</title>
+<style>
+:root {
+  --bg: #eef0f3;
+  --panel: #ffffff;
+  --ink: #1d232b;
+  --muted: #69727d;
+  --line: #d5d9df;
+  --accent: #1f5fa8;
+  --accent-ink: #ffffff;
+  --danger: #a3302a;
+  --slot: #f7f8fa;
+  --cont: #e9edf2;
+  --error-bg: #fbe9e7;
+  --warn-bg: #fff6dc;
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  font-size: 14px;
+  color: var(--ink);
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); height: 100vh; display: flex; flex-direction: column; }
+
+.topbar {
+  display: flex; gap: 16px; align-items: center; flex-wrap: wrap;
+  padding: 10px 16px; background: #17202b; color: #fff;
+}
+.brand { font-weight: 650; letter-spacing: .02em; margin-right: auto; }
+.brand span { font-weight: 400; color: #9aa6b4; margin-left: 8px; font-size: 12px; }
+.panels, .exports { display: flex; gap: 6px; align-items: center; }
+.panels label { color: #9aa6b4; font-size: 12px; }
+.topbar select { min-width: 180px; }
+.sep { width: 1px; height: 22px; background: #3a4654; margin: 0 4px; }
+
+button, select, input, textarea {
+  font: inherit; color: inherit;
+}
+button {
+  border: 1px solid var(--line); background: #fff; color: var(--ink);
+  border-radius: 5px; padding: 5px 11px; cursor: pointer;
+}
+button:hover { border-color: #9aa6b4; }
+button.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); font-weight: 600; }
+button.danger { color: var(--danger); }
+button:disabled { opacity: .45; cursor: not-allowed; }
+.topbar select, .topbar button { border-color: #3a4654; }
+.topbar select { color: var(--ink); background: #fff; }
+
+main { flex: 1; display: grid; grid-template-columns: minmax(560px, 46%) 1fr; min-height: 0; }
+.editor { overflow-y: auto; padding: 14px; display: flex; flex-direction: column; gap: 12px; }
+.preview { display: flex; flex-direction: column; min-height: 0; border-left: 1px solid var(--line); }
+
+.card { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 0 14px; }
+.card > summary { cursor: pointer; padding: 11px 0; font-weight: 650; }
+.card[open] > summary { border-bottom: 1px solid var(--line); margin-bottom: 12px; }
+.card .hint { font-weight: 400; color: var(--muted); font-size: 12px; margin-left: 6px; }
+.card > :last-child { margin-bottom: 14px; }
+
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 10px 12px; }
+.grid label { display: flex; flex-direction: column; gap: 3px; font-size: 12px; color: var(--muted); }
+input, select, textarea {
+  border: 1px solid var(--line); border-radius: 5px; padding: 5px 7px; background: #fff; min-width: 0;
+}
+input:focus, select:focus, textarea:focus { outline: 2px solid #9cc0ea; border-color: var(--accent); }
+textarea { width: 100%; resize: vertical; }
+
+.usage { font-size: 12px; color: var(--muted); margin-bottom: 8px; }
+.slots { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 10px; }
+.col { display: flex; flex-direction: column; gap: 4px; }
+.col-title { font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); padding-left: 2px; }
+
+.slot {
+  display: grid; grid-template-columns: 46px 1fr; gap: 4px 6px; align-items: start;
+  background: var(--slot); border: 1px solid var(--line); border-radius: 6px; padding: 5px;
+  min-height: 40px;
+}
+.slot.blank { opacity: .78; }
+.slot.cont { background: var(--cont); border-style: dashed; color: var(--muted); font-size: 12px; align-items: center; }
+.slot .num {
+  font-weight: 700; text-align: center; font-variant-numeric: tabular-nums;
+  padding-top: 5px; color: var(--ink); font-size: 13px; word-break: break-all;
+}
+.slot .phase { display: block; font-size: 10px; font-weight: 400; color: var(--muted); }
+.slot .body { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.row { display: flex; gap: 4px; align-items: center; min-width: 0; }
+.row .tag { font-size: 11px; color: var(--muted); width: 38px; flex: none; }
+.row select.kind { flex: 1; }
+.row input.amps { width: 64px; flex: none; -moz-appearance: textfield; }
+.row input.amps::-webkit-inner-spin-button, .row input.amps::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+.row .unit { font-size: 12px; color: var(--muted); margin-left: -2px; }
+.pole { display: flex; flex-direction: column; gap: 3px; }
+.pole + .pole { border-top: 1px dotted var(--line); padding-top: 4px; }
+.row select.feat { flex: 1; min-width: 70px; }
+.row input.label { flex: 1; }
+.row label.tie { font-size: 12px; color: var(--muted); display: flex; gap: 3px; align-items: center; white-space: nowrap; }
+.span-2 { min-height: 84px; } .span-3 { min-height: 128px; }
+
+.preview-bar { display: flex; justify-content: space-between; align-items: center; padding: 8px 14px; background: var(--panel); border-bottom: 1px solid var(--line); font-size: 12px; color: var(--muted); }
+.zoom { display: flex; gap: 4px; }
+.zoom button { padding: 2px 9px; }
+#messages:empty { display: none; }
+#messages { padding: 8px 14px; font-size: 13px; }
+#messages .err { background: var(--error-bg); border-left: 3px solid var(--danger); padding: 6px 10px; margin-bottom: 4px; }
+#messages .warn { background: var(--warn-bg); border-left: 3px solid #c99a1b; padding: 6px 10px; margin-bottom: 4px; }
+.sheet-wrap { flex: 1; overflow: auto; padding: 18px; }
+.sheet { margin: 0 auto; background: #fff; box-shadow: 0 2px 14px rgba(0,0,0,.18); aspect-ratio: 11 / 17; }
+.sheet svg { width: 100%; height: 100%; display: block; }
+.sheet.stale { opacity: .55; transition: opacity .2s; }
+
+@media (max-width: 1100px) {
+  main { grid-template-columns: 1fr; }
+  .preview { border-left: 0; border-top: 1px solid var(--line); min-height: 80vh; }
+  body { height: auto; }
+}
+
+/* print: only the sheet, at full size on 11x17 */
+#printSheet { display: none; }
+@page { size: 11in 17in; margin: 0; }
+@media print {
+  body > *:not(#printSheet) { display: none !important; }
+  body { background: #fff; height: auto; display: block; }
+  #printSheet { display: block; width: 11in; height: 17in; }
+  #printSheet svg { width: 11in; height: 17in; display: block; }
+}
+</style>
+</head>
+<body>
+<header class="topbar">
+  <div class="brand">Panel Directory Drafter <span>ANSI B · 11×17 portrait</span></div>
+  <div class="panels">
+    <label for="panelSelect">Panel</label>
+    <select id="panelSelect"></select>
+    <button id="btnNew" title="New blank panel">New</button>
+    <button id="btnDup" title="Duplicate this panel">Duplicate</button>
+    <button id="btnDel" class="danger" title="Delete this panel">Delete</button>
+  </div>
+  <div class="exports">
+    <button id="btnImport" title="Load a saved .json configuration">Import JSON</button>
+    <button id="btnExportJson" title="Save configuration as .json">Save JSON</button>
+    <span class="sep"></span>
+    <button id="btnPdf" title="Print at 11×17, or choose “Save as PDF” in the print dialog">Print / PDF</button>
+    <button id="btnDxf" class="primary">Download DXF</button>
+  </div>
+  <input type="file" id="fileInput" accept=".json,application/json" hidden>
+</header>
+
+<main>
+  <section class="editor" id="editor">
+    <details open class="card">
+      <summary>Panel information</summary>
+      <div class="grid">
+        <label>Panel name<input data-k="name"></label>
+        <label>Location<input data-k="location" placeholder="e.g. Garage, north wall"></label>
+        <label>Manufacturer<input data-k="manufacturer"></label>
+        <label>Model / catalog no.<input data-k="model"></label>
+        <label>Service
+          <input data-k="voltage" list="voltages">
+          <datalist id="voltages">
+            <option value="120/240V 1Φ 3W"><option value="120/208V 3Φ 4W"><option value="120/208V 1Φ 3W"><option value="277/480V 3Φ 4W">
+          </datalist>
+        </label>
+        <label>Phases
+          <select data-k="phases" data-num><option value="1">Single phase (L1/L2)</option><option value="3">Three phase (A/B/C)</option></select>
+        </label>
+        <label>Main
+          <select data-k="main.kind"><option value="breaker">Main breaker</option><option value="lugs">Main lugs only</option></select>
+        </label>
+        <label>Main rating (A)<input data-k="main.amps" data-num type="number" min="0" step="5"></label>
+        <label>Bus rating (A)<input data-k="bus_amps" data-num type="number" min="0" step="5"></label>
+        <label>Fed from<input data-k="fed_from" placeholder="e.g. Utility meter / Panel A ckt 6,8"></label>
+        <label>Spaces
+          <input data-k="spaces" data-num type="number" min="2" max="84" step="2" data-structural>
+        </label>
+        <label>Numbering
+          <select data-k="numbering" data-structural>
+            <option value="odd_even">Odd left / even right</option>
+            <option value="sequential">Down left, then down right</option>
+          </select>
+        </label>
+      </div>
+    </details>
+
+    <details open class="card">
+      <summary>Breakers <span class="hint">Set each space as it physically sits in the box. Multi-space breakers claim the spaces below them.</span></summary>
+      <div class="usage" id="usage"></div>
+      <div class="slots" id="slots"></div>
+    </details>
+
+    <details class="card">
+      <summary>Notes</summary>
+      <textarea id="notes" rows="5" placeholder="One note per line"></textarea>
+    </details>
+
+    <details class="card">
+      <summary>Title block</summary>
+      <div class="grid">
+        <label>Project / property<input data-k="titleblock.project"></label>
+        <label>Drawing title<input data-k="titleblock.title" placeholder="(auto: PANEL NAME — PANEL DIRECTORY)"></label>
+        <label>Drawn by<input data-k="titleblock.drawn_by"></label>
+        <label>Date<input data-k="titleblock.date" type="date"></label>
+        <label>Dwg no.<input data-k="titleblock.dwg_no"></label>
+        <label>Rev<input data-k="titleblock.rev"></label>
+        <label>Sheet<input data-k="titleblock.sheet" placeholder="1 OF 1"></label>
+        <label>Descriptions
+          <select data-k="titleblock.uppercase"><option value="1">ALL CAPS</option><option value="0">As typed</option></select>
+        </label>
+      </div>
+    </details>
+  </section>
+
+  <section class="preview">
+    <div class="preview-bar">
+      <span id="status">Ready</span>
+      <span class="zoom">
+        <button id="zoomOut" title="Zoom out">−</button>
+        <button id="zoomFit" title="Fit">Fit</button>
+        <button id="zoomIn" title="Zoom in">+</button>
+      </span>
+    </div>
+    <div id="messages"></div>
+    <div class="sheet-wrap" id="sheetWrap"><div class="sheet" id="sheet"></div></div>
+  </section>
+</main>
+
+<datalist id="ampList">
+  <option value="15"><option value="20"><option value="25"><option value="30"><option value="35"><option value="40"><option value="45"><option value="50"><option value="60"><option value="70"><option value="80"><option value="90"><option value="100"><option value="125"><option value="150"><option value="200">
+</datalist>
+<div id="printSheet"></div>
+
+<!-- Sample panel loaded on first use. -->
+<script type="application/json" id="example-panel">
+{
+ "name": "Panel A - Main",
+ "location": "Garage, north wall",
+ "manufacturer": "Square D",
+ "model": "QO140M200",
+ "voltage": "120/240V 1Φ 3W",
+ "phases": 1,
+ "main": {
+  "kind": "breaker",
+  "amps": 200
+ },
+ "bus_amps": 200,
+ "fed_from": "Utility meter",
+ "spaces": 40,
+ "numbering": "odd_even",
+ "breakers": [
+  {
+   "space": 1,
+   "kind": "double",
+   "amps": 40,
+   "label": "Range / oven"
+  },
+  {
+   "space": 2,
+   "kind": "double",
+   "amps": 30,
+   "label": "Clothes dryer"
+  },
+  {
+   "space": 5,
+   "kind": "single",
+   "amps": 20,
+   "label": "Kitchen countertop receptacles (left of sink)",
+   "feature": "DF"
+  },
+  {
+   "space": 7,
+   "kind": "single",
+   "amps": 20,
+   "label": "Kitchen countertop receptacles (right of sink)",
+   "feature": "DF"
+  },
+  {
+   "space": 6,
+   "kind": "double",
+   "amps": 60,
+   "label": "Subpanel B - detached workshop",
+   "feature": ""
+  },
+  {
+   "space": 9,
+   "kind": "single",
+   "amps": 20,
+   "label": "Dishwasher",
+   "tie_below": true
+  },
+  {
+   "space": 11,
+   "kind": "single",
+   "amps": 20,
+   "label": "Garbage disposal (MWBC with ckt 9)"
+  },
+  {
+   "space": 10,
+   "kind": "tandem",
+   "a": {
+    "amps": 15,
+    "label": "Hall & stair lighting"
+   },
+   "b": {
+    "amps": 15,
+    "label": "Front porch lights"
+   }
+  },
+  {
+   "space": 12,
+   "kind": "tandem",
+   "a": {
+    "amps": 20,
+    "label": "Garage receptacles",
+    "feature": "GFCI"
+   },
+   "b": {
+    "amps": 15,
+    "label": "Garage door opener"
+   }
+  },
+  {
+   "space": 13,
+   "kind": "single",
+   "amps": 20,
+   "label": "Refrigerator"
+  },
+  {
+   "space": 14,
+   "kind": "quad",
+   "a": {
+    "amps": 30,
+    "label": "Water heater"
+   },
+   "b": {
+    "amps": 20,
+    "label": "Well pump"
+   }
+  },
+  {
+   "space": 15,
+   "kind": "single",
+   "amps": 15,
+   "label": "Bedroom 1",
+   "feature": "AFCI"
+  },
+  {
+   "space": 17,
+   "kind": "single",
+   "amps": 15,
+   "label": "Bedroom 2",
+   "feature": "AFCI"
+  },
+  {
+   "space": 18,
+   "kind": "double",
+   "amps": 40,
+   "label": "A/C condenser"
+  },
+  {
+   "space": 19,
+   "kind": "single",
+   "amps": 15,
+   "label": "Primary bedroom",
+   "feature": "AFCI"
+  },
+  {
+   "space": 21,
+   "kind": "single",
+   "amps": 20,
+   "label": "Bathrooms receptacles",
+   "feature": "GFCI"
+  },
+  {
+   "space": 22,
+   "kind": "single",
+   "amps": 15,
+   "label": "Furnace / air handler"
+  },
+  {
+   "space": 23,
+   "kind": "single",
+   "amps": 15,
+   "label": "Living room & dining room",
+   "feature": "AFCI"
+  },
+  {
+   "space": 24,
+   "kind": "single",
+   "amps": 20,
+   "label": "Laundry receptacle"
+  },
+  {
+   "space": 25,
+   "kind": "single",
+   "amps": 20,
+   "label": "Microwave"
+  },
+  {
+   "space": 26,
+   "kind": "single",
+   "amps": 20,
+   "label": "Exterior receptacles",
+   "feature": "GFCI"
+  },
+  {
+   "space": 27,
+   "kind": "single",
+   "amps": 15,
+   "label": "Smoke detectors"
+  },
+  {
+   "space": 28,
+   "kind": "single",
+   "amps": 20,
+   "label": "Spare"
+  },
+  {
+   "space": 29,
+   "kind": "double",
+   "amps": 50,
+   "label": "EV charger (garage)",
+   "feature": ""
+  },
+  {
+   "space": 30,
+   "kind": "double",
+   "amps": 20,
+   "label": "Whole-house surge protector",
+   "feature": "SPD"
+  }
+ ],
+ "notes": [
+  "Circuits 9 and 11 are a multi-wire branch circuit sharing a neutral; handle tie required.",
+  "Verify circuit identification with a circuit tracer before working on any circuit.",
+  "Grounding electrode: two ground rods, 6 ft apart, at the meter base."
+ ],
+ "titleblock": {
+  "project": "1234 Example Street",
+  "drawn_by": "D. Panzino",
+  "dwg_no": "E-101",
+  "rev": "A",
+  "sheet": "1 OF 2"
+ }
+}
+</script>
+
+<!-- DXF template (header, layers, Arial text styles, "ANSI B" layout); regenerate with
+     tools/make_dxf_template.py. Entities are spliced in at %%ENTITIES%%. -->
+<script type="application/json" id="dxf-template">
+{"owner": "17", "seed": "49", "dxf": "  0\nSECTION\n  2\nHEADER\n  9\n$ACADVER\n  1\nAC1027\n  9\n$ACADMAINTVER\n 70\n105\n  9\n$DWGCODEPAGE\n  3\nANSI_1252\n  9\n$LASTSAVEDBY\n  1\nezdxf\n  9\n$REQUIREDVERSIONS\n160\n0\n  9\n$INSBASE\n 10\n0.0\n 20\n0.0\n 30\n0.0\n  9\n$EXTMIN\n 10\n1e+20\n 20\n1e+20\n 30\n1e+20\n  9\n$EXTMAX\n 10\n-1e+20\n 20\n-1e+20\n 30\n-1e+20\n  9\n$LIMMIN\n 10\n0.0\n 20\n0.0\n  9\n$LIMMAX\n 10\n420.0\n 20\n297.0\n  9\n$ORTHOMODE\n 70\n0\n  9\n$REGENMODE\n 70\n1\n  9\n$FILLMODE\n 70\n1\n  9\n$QTEXTMODE\n 70\n0\n  9\n$MIRRTEXT\n 70\n1\n  9\n$LTSCALE\n 40\n0.25\n  9\n$ATTMODE\n 70\n1\n  9\n$TEXTSIZE\n 40\n2.5\n  9\n$TRACEWID\n 40\n1.0\n  9\n$TEXTSTYLE\n  7\nStandard\n  9\n$CLAYER\n  8\n0\n  9\n$CELTYPE\n  6\nByLayer\n  9\n$CECOLOR\n 62\n256\n  9\n$CELTSCALE\n 40\n1.0\n  9\n$DISPSILH\n 70\n0\n  9\n$DIMSCALE\n 40\n1.0\n  9\n$DIMASZ\n 40\n2.5\n  9\n$DIMEXO\n 40\n0.625\n  9\n$DIMDLI\n 40\n3.75\n  9\n$DIMRND\n 40\n0.0\n  9\n$DIMDLE\n 40\n0.0\n  9\n$DIMEXE\n 40\n1.25\n  9\n$DIMTP\n 40\n0.0\n  9\n$DIMTM\n 40\n0.0\n  9\n$DIMTXT\n 40\n2.5\n  9\n$DIMCEN\n 40\n2.5\n  9\n$DIMTSZ\n 40\n0.0\n  9\n$DIMTOL\n 70\n0\n  9\n$DIMLIM\n 70\n0\n  9\n$DIMTIH\n 70\n0\n  9\n$DIMTOH\n 70\n0\n  9\n$DIMSE1\n 70\n0\n  9\n$DIMSE2\n 70\n0\n  9\n$DIMTAD\n 70\n1\n  9\n$DIMZIN\n 70\n8\n  9\n$DIMBLK\n  1\n\n  9\n$DIMASO\n 70\n1\n  9\n$DIMSHO\n 70\n1\n  9\n$DIMPOST\n  1\n\n  9\n$DIMAPOST\n  1\n\n  9\n$DIMALT\n 70\n0\n  9\n$DIMALTD\n 70\n3\n  9\n$DIMALTF\n 40\n0.03937007874\n  9\n$DIMLFAC\n 40\n1.0\n  9\n$DIMTOFL\n 70\n1\n  9\n$DIMTVP\n 40\n0.0\n  9\n$DIMTIX\n 70\n0\n  9\n$DIMSOXD\n 70\n0\n  9\n$DIMSAH\n 70\n0\n  9\n$DIMBLK1\n  1\n\n  9\n$DIMBLK2\n  1\n\n  9\n$DIMSTYLE\n  2\nISO-25\n  9\n$DIMCLRD\n 70\n0\n  9\n$DIMCLRE\n 70\n0\n  9\n$DIMCLRT\n 70\n0\n  9\n$DIMTFAC\n 40\n1.0\n  9\n$DIMGAP\n 40\n0.625\n  9\n$DIMJUST\n 70\n0\n  9\n$DIMSD1\n 70\n0\n  9\n$DIMSD2\n 70\n0\n  9\n$DIMTOLJ\n 70\n0\n  9\n$DIMTZIN\n 70\n8\n  9\n$DIMALTZ\n 70\n0\n  9\n$DIMALTTZ\n 70\n0\n  9\n$DIMUPT\n 70\n0\n  9\n$DIMDEC\n 70\n2\n  9\n$DIMTDEC\n 70\n2\n  9\n$DIMALTU\n 70\n2\n  9\n$DIMALTTD\n 70\n3\n  9\n$DIMTXSTY\n  7\nStandard\n  9\n$DIMAUNIT\n 70\n0\n  9\n$DIMADEC\n 70\n0\n  9\n$DIMALTRND\n 40\n0.0\n  9\n$DIMAZIN\n 70\n0\n  9\n$DIMDSEP\n 70\n44\n  9\n$DIMATFIT\n 70\n3\n  9\n$DIMFRAC\n 70\n0\n  9\n$DIMLDRBLK\n  1\n\n  9\n$DIMLUNIT\n 70\n2\n  9\n$DIMLWD\n 70\n-2\n  9\n$DIMLWE\n 70\n-2\n  9\n$DIMTMOVE\n 70\n0\n  9\n$DIMFXL\n 40\n1.0\n  9\n$DIMFXLON\n 70\n0\n  9\n$DIMJOGANG\n 40\n0.785398163397\n  9\n$DIMTFILL\n 70\n0\n  9\n$DIMTFILLCLR\n 70\n0\n  9\n$DIMARCSYM\n 70\n0\n  9\n$DIMLTYPE\n  6\n\n  9\n$DIMLTEX1\n  6\n\n  9\n$DIMLTEX2\n  6\n\n  9\n$DIMTXTDIRECTION\n 70\n0\n  9\n$LUNITS\n 70\n2\n  9\n$LUPREC\n 70\n4\n  9\n$SKETCHINC\n 40\n1.0\n  9\n$FILLETRAD\n 40\n10.0\n  9\n$AUNITS\n 70\n0\n  9\n$AUPREC\n 70\n2\n  9\n$MENU\n  1\n.\n  9\n$ELEVATION\n 40\n0.0\n  9\n$PELEVATION\n 40\n0.0\n  9\n$THICKNESS\n 40\n0.0\n  9\n$LIMCHECK\n 70\n0\n  9\n$CHAMFERA\n 40\n0.0\n  9\n$CHAMFERB\n 40\n0.0\n  9\n$CHAMFERC\n 40\n0.0\n  9\n$CHAMFERD\n 40\n0.0\n  9\n$SKPOLY\n 70\n0\n  9\n$TDCREATE\n 40\n2461329.6908680554\n  9\n$TDUCREATE\n 40\n2458532.153996898\n  9\n$TDUPDATE\n 40\n2461329.6908680554\n  9\n$TDUUPDATE\n 40\n2458532.1544311\n  9\n$TDINDWG\n 40\n0.0\n  9\n$TDUSRTIMER\n 40\n0.0\n  9\n$USRTIMER\n 70\n1\n  9\n$ANGBASE\n 50\n0.0\n  9\n$ANGDIR\n 70\n0\n  9\n$PDMODE\n 70\n0\n  9\n$PDSIZE\n 40\n0.0\n  9\n$PLINEWID\n 40\n0.0\n  9\n$SPLFRAME\n 70\n0\n  9\n$SPLINETYPE\n 70\n6\n  9\n$SPLINESEGS\n 70\n8\n  9\n$HANDSEED\n  5\n%%HANDSEED%%\n  9\n$SURFTAB1\n 70\n6\n  9\n$SURFTAB2\n 70\n6\n  9\n$SURFTYPE\n 70\n6\n  9\n$SURFU\n 70\n6\n  9\n$SURFV\n 70\n6\n  9\n$UCSBASE\n  2\n\n  9\n$UCSNAME\n  2\n\n  9\n$UCSORG\n 10\n0.0\n 20\n0.0\n 30\n0.0\n  9\n$UCSXDIR\n 10\n1.0\n 20\n0.0\n 30\n0.0\n  9\n$UCSYDIR\n 10\n0.0\n 20\n1.0\n 30\n0.0\n  9\n$UCSORTHOREF\n  2\n\n  9\n$UCSORTHOVIEW\n 70\n0\n  9\n$UCSORGTOP\n 10\n0.0\n 20\n0.0\n 30\n0.0\n  9\n$UCSORGBOTTOM\n 10\n0.0\n 20\n0.0\n 30\n0.0\n  9\n$UCSORGLEFT\n 10\n0.0\n 20\n0.0\n 30\n0.0\n  9\n$UCSORGRIGHT\n 10\n0.0\n 20\n0.0\n 30\n0.0\n  9\n$UCSORGFRONT\n 10\n0.0\n 20\n0.0\n 30\n0.0\n  9\n$UCSORGBACK\n 10\n0.0\n 20\n0.0\n 30\n0.0\n  9\n$PUCSBASE\n  2\n\n  9\n$PUCSNAME\n  2\n\n  9\n$PUCSORG\n 10\n0.0\n 20\n0.0\n 30\n0.0\n  9\n$PUCSXDIR\n 10\n1.0\n 20\n0.0\n 30\n0.0\n  9\n$PUCSYDIR\n 10\n0.0\n 20\n1.0\n 30\n0.0\n  9\n$PUCSORTHOREF\n  2\n\n  9\n$PUCSORTHOVIEW\n 70\n0\n  9\n$PUCSORGTOP\n 10\n0.0\n 20\n0.0\n 30\n0.0\n  9\n$PUCSORGBOTTOM\n 10\n0.0\n 20\n0.0\n 30\n0.0\n  9\n$PUCSORGLEFT\n 10\n0.0\n 20\n0.0\n 30\n0.0\n  9\n$PUCSORGRIGHT\n 10\n0.0\n 20\n0.0\n 30\n0.0\n  9\n$PUCSORGFRONT\n 10\n0.0\n 20\n0.0\n 30\n0.0\n  9\n$PUCSORGBACK\n 10\n0.0\n 20\n0.0\n 30\n0.0\n  9\n$USERI1\n 70\n0\n  9\n$USERI2\n 70\n0\n  9\n$USERI3\n 70\n0\n  9\n$USERI4\n 70\n0\n  9\n$USERI5\n 70\n0\n  9\n$USERR1\n 40\n0.0\n  9\n$USERR2\n 40\n0.0\n  9\n$USERR3\n 40\n0.0\n  9\n$USERR4\n 40\n0.0\n  9\n$USERR5\n 40\n0.0\n  9\n$WORLDVIEW\n 70\n1\n  9\n$SHADEDGE\n 70\n3\n  9\n$SHADEDIF\n 70\n70\n  9\n$TILEMODE\n 70\n1\n  9\n$MAXACTVP\n 70\n64\n  9\n$PINSBASE\n 10\n0.0\n 20\n0.0\n 30\n0.0\n  9\n$PLIMCHECK\n 70\n0\n  9\n$PEXTMIN\n 10\n1e+20\n 20\n1e+20\n 30\n1e+20\n  9\n$PEXTMAX\n 10\n-1e+20\n 20\n-1e+20\n 30\n-1e+20\n  9\n$PLIMMIN\n 10\n-0.0\n 20\n-0.0\n  9\n$PLIMMAX\n 10\n11.0\n 20\n17.0\n  9\n$UNITMODE\n 70\n0\n  9\n$VISRETAIN\n 70\n1\n  9\n$PLINEGEN\n 70\n0\n  9\n$PSLTSCALE\n 70\n0\n  9\n$TREEDEPTH\n 70\n3020\n  9\n$CMLSTYLE\n  2\nStandard\n  9\n$CMLJUST\n 70\n0\n  9\n$CMLSCALE\n 40\n20.0\n  9\n$PROXYGRAPHICS\n 70\n1\n  9\n$MEASUREMENT\n 70\n0\n  9\n$CELWEIGHT\n370\n-1\n  9\n$ENDCAPS\n280\n0\n  9\n$JOINSTYLE\n280\n0\n  9\n$LWDISPLAY\n290\n1\n  9\n$INSUNITS\n 70\n1\n  9\n$HYPERLINKBASE\n  1\n\n  9\n$STYLESHEET\n  1\n\n  9\n$XEDIT\n290\n1\n  9\n$CEPSNTYPE\n380\n0\n  9\n$PSTYLEMODE\n290\n1\n  9\n$FINGERPRINTGUID\n  2\n{8B993180-99A2-4B6B-BEED-D6C5E870C5A7}\n  9\n$VERSIONGUID\n  2\n{3A15D6EA-4F2D-4267-9E8E-9B08B0292B4D}\n  9\n$EXTNAMES\n290\n1\n  9\n$PSVPSCALE\n 40\n0.0\n  9\n$OLESTARTUP\n290\n0\n  9\n$SORTENTS\n280\n127\n  9\n$INDEXCTL\n280\n0\n  9\n$HIDETEXT\n280\n1\n  9\n$XCLIPFRAME\n280\n1\n  9\n$HALOGAP\n280\n0\n  9\n$OBSCOLOR\n 70\n257\n  9\n$OBSLTYPE\n280\n0\n  9\n$INTERSECTIONDISPLAY\n280\n0\n  9\n$INTERSECTIONCOLOR\n 70\n257\n  9\n$DIMASSOC\n280\n2\n  9\n$PROJECTNAME\n  1\n\n  9\n$CAMERADISPLAY\n290\n0\n  9\n$LENSLENGTH\n 40\n50.0\n  9\n$CAMERAHEIGHT\n 40\n0.0\n  9\n$STEPSPERSEC\n 40\n24.0\n  9\n$STEPSIZE\n 40\n100.0\n  9\n$3DDWFPREC\n 40\n2.0\n  9\n$PSOLWIDTH\n 40\n0.005\n  9\n$PSOLHEIGHT\n 40\n0.08\n  9\n$LOFTANG1\n 40\n1.570796326795\n  9\n$LOFTANG2\n 40\n1.570796326795\n  9\n$LOFTMAG1\n 40\n0.0\n  9\n$LOFTMAG2\n 40\n0.0\n  9\n$LOFTPARAM\n 70\n7\n  9\n$LOFTNORMALS\n280\n1\n  9\n$LATITUDE\n 40\n37.795\n  9\n$LONGITUDE\n 40\n-122.394\n  9\n$NORTHDIRECTION\n 40\n0.0\n  9\n$TIMEZONE\n 70\n-8000\n  9\n$LIGHTGLYPHDISPLAY\n280\n1\n  9\n$TILEMODELIGHTSYNCH\n280\n1\n  9\n$CMATERIAL\n347\n20\n  9\n$SOLIDHIST\n280\n0\n  9\n$SHOWHIST\n280\n1\n  9\n$DWFFRAME\n280\n2\n  9\n$DGNFRAME\n280\n2\n  9\n$REALWORLDSCALE\n290\n1\n  9\n$INTERFERECOLOR\n 62\n256\n  9\n$CSHADOW\n280\n0\n  9\n$SHADOWPLANELOCATION\n 40\n0.0\n  0\nENDSEC\n  0\nSECTION\n  2\nCLASSES\n  0\nCLASS\n  1\nACDBDICTIONARYWDFLT\n  2\nAcDbDictionaryWithDefault\n  3\nObjectDBX Classes\n 90\n0\n 91\n0\n280\n0\n281\n0\n  0\nCLASS\n  1\nSUN\n  2\nAcDbSun\n  3\nSCENEOE\n 90\n1153\n 91\n0\n280\n0\n281\n0\n  0\nCLASS\n  1\nVISUALSTYLE\n  2\nAcDbVisualStyle\n  3\nObjectDBX Classes\n 90\n4095\n 91\n0\n280\n0\n281\n0\n  0\nCLASS\n  1\nMATERIAL\n  2\nAcDbMaterial\n  3\nObjectDBX Classes\n 90\n1153\n 91\n0\n280\n0\n281\n0\n  0\nCLASS\n  1\nSCALE\n  2\nAcDbScale\n  3\nObjectDBX Classes\n 90\n1153\n 91\n0\n280\n0\n281\n0\n  0\nCLASS\n  1\nTABLESTYLE\n  2\nAcDbTableStyle\n  3\nObjectDBX Classes\n 90\n4095\n 91\n0\n280\n0\n281\n0\n  0\nCLASS\n  1\nMLEADERSTYLE\n  2\nAcDbMLeaderStyle\n  3\nACDB_MLEADERSTYLE_CLASS\n 90\n4095\n 91\n0\n280\n0\n281\n0\n  0\nCLASS\n  1\nDICTIONARYVAR\n  2\nAcDbDictionaryVar\n  3\nObjectDBX Classes\n 90\n0\n 91\n0\n280\n0\n281\n0\n  0\nCLASS\n  1\nCELLSTYLEMAP\n  2\nAcDbCellStyleMap\n  3\nObjectDBX Classes\n 90\n1152\n 91\n0\n280\n0\n281\n0\n  0\nCLASS\n  1\nMENTALRAYRENDERSETTINGS\n  2\nAcDbMentalRayRenderSettings\n  3\nSCENEOE\n 90\n1024\n 91\n0\n280\n0\n281\n0\n  0\nCLASS\n  1\nACDBDETAILVIEWSTYLE\n  2\nAcDbDetailViewStyle\n  3\nObjectDBX Classes\n 90\n1025\n 91\n0\n280\n0\n281\n0\n  0\nCLASS\n  1\nACDBSECTIONVIEWSTYLE\n  2\nAcDbSectionViewStyle\n  3\nObjectDBX Classes\n 90\n1025\n 91\n0\n280\n0\n281\n0\n  0\nCLASS\n  1\nRASTERVARIABLES\n  2\nAcDbRasterVariables\n  3\nISM\n 90\n0\n 91\n0\n280\n0\n281\n0\n  0\nCLASS\n  1\nLAYOUT\n  2\nAcDbLayout\n  3\nObjectDBX Classes\n 90\n0\n 91\n0\n280\n0\n281\n0\n  0\nCLASS\n  1\nACDBPLACEHOLDER\n  2\nAcDbPlaceHolder\n  3\nObjectDBX Classes\n 90\n0\n 91\n0\n280\n0\n281\n0\n  0\nENDSEC\n  0\nSECTION\n  2\nTABLES\n  0\nTABLE\n  2\nVPORT\n  5\n8\n330\n0\n100\nAcDbSymbolTable\n 70\n1\n  0\nVPORT\n  5\n45\n330\n8\n100\nAcDbSymbolTableRecord\n100\nAcDbViewportTableRecord\n  2\n*Active\n 70\n0\n 10\n0.0\n 20\n0.0\n 11\n1.0\n 21\n1.0\n 12\n5.5\n 22\n8.5\n 13\n0.0\n 23\n0.0\n 14\n0.5\n 24\n0.5\n 15\n0.5\n 25\n0.5\n 16\n0.0\n 26\n0.0\n 36\n1.0\n 17\n0.0\n 27\n0.0\n 37\n0.0\n 40\n17.0\n 41\n1.34\n 42\n50.0\n 43\n0.0\n 44\n0.0\n 50\n0.0\n 51\n0.0\n 71\n0\n 72\n1000\n 73\n1\n 74\n3\n 75\n0\n 76\n0\n 77\n0\n 78\n0\n281\n0\n 65\n1\n110\n0.0\n120\n0.0\n130\n0.0\n111\n1.0\n121\n0.0\n131\n0.0\n112\n0.0\n122\n1.0\n132\n0.0\n 79\n0\n146\n0.0\n  0\nENDTAB\n  0\nTABLE\n  2\nLTYPE\n  5\n2\n330\n0\n100\nAcDbSymbolTable\n 70\n4\n  0\nLTYPE\n  5\n24\n330\n2\n100\nAcDbSymbolTableRecord\n100\nAcDbLinetypeTableRecord\n  2\nByBlock\n 70\n0\n  3\n\n 72\n65\n 73\n0\n 40\n0.0\n  0\nLTYPE\n  5\n25\n330\n2\n100\nAcDbSymbolTableRecord\n100\nAcDbLinetypeTableRecord\n  2\nByLayer\n 70\n0\n  3\n\n 72\n65\n 73\n0\n 40\n0.0\n  0\nLTYPE\n  5\n26\n330\n2\n100\nAcDbSymbolTableRecord\n100\nAcDbLinetypeTableRecord\n  2\nContinuous\n 70\n0\n  3\n\n 72\n65\n 73\n0\n 40\n0.0\n  0\nLTYPE\n  5\n2F\n330\n2\n100\nAcDbSymbolTableRecord\n100\nAcDbLinetypeTableRecord\n  2\nDASHED\n 70\n0\n  3\nDashed __ __ __ __\n 72\n65\n 73\n2\n 40\n0.75\n 49\n0.5\n 74\n0\n 49\n-0.25\n 74\n0\n  0\nENDTAB\n  0\nTABLE\n  2\nLAYER\n  5\n1\n330\n0\n100\nAcDbSymbolTable\n 70\n19\n  0\nLAYER\n  5\n27\n330\n1\n100\nAcDbSymbolTableRecord\n100\nAcDbLayerTableRecord\n  2\n0\n 70\n0\n 62\n7\n  6\nContinuous\n370\n-3\n390\n13\n347\n21\n  0\nLAYER\n  5\n28\n330\n1\n100\nAcDbSymbolTableRecord\n100\nAcDbLayerTableRecord\n  2\nDefpoints\n 70\n0\n 62\n7\n  6\nContinuous\n290\n0\n370\n-3\n390\n13\n347\n21\n  0\nLAYER\n  5\n30\n330\n1\n100\nAcDbSymbolTableRecord\n100\nAcDbLayerTableRecord\n  2\nFRAME\n 70\n0\n 62\n7\n  6\nCONTINUOUS\n370\n60\n390\n13\n347\n21\n  0\nLAYER\n  5\n31\n330\n1\n100\nAcDbSymbolTableRecord\n100\nAcDbLayerTableRecord\n  2\nFRAME-THIN\n 70\n0\n 62\n7\n  6\nCONTINUOUS\n370\n18\n390\n13\n347\n21\n  0\nLAYER\n  5\n32\n330\n1\n100\nAcDbSymbolTableRecord\n100\nAcDbLayerTableRecord\n  2\nTITLE\n 70\n0\n 62\n7\n  6\nCONTINUOUS\n370\n35\n390\n13\n347\n21\n  0\nLAYER\n  5\n33\n330\n1\n100\nAcDbSymbolTableRecord\n100\nAcDbLayerTableRecord\n  2\nTITLE-GRID\n 70\n0\n 62\n7\n  6\nCONTINUOUS\n370\n18\n390\n13\n347\n21\n  0\nLAYER\n  5\n34\n330\n1\n100\nAcDbSymbolTableRecord\n100\nAcDbLayerTableRecord\n  2\nTEXT\n 70\n0\n 62\n7\n  6\nCONTINUOUS\n370\n25\n390\n13\n347\n21\n  0\nLAYER\n  5\n35\n330\n1\n100\nAcDbSymbolTableRecord\n100\nAcDbLayerTableRecord\n  2\nTEXT-MINOR\n 70\n0\n 62\n8\n  6\nCONTINUOUS\n370\n18\n390\n13\n347\n21\n  0\nLAYER\n  5\n36\n330\n1\n100\nAcDbSymbolTableRecord\n100\nAcDbLayerTableRecord\n  2\nENCLOSURE\n 70\n0\n 62\n7\n  6\nCONTINUOUS\n370\n50\n390\n13\n347\n21\n  0\nLAYER\n  5\n37\n330\n1\n100\nAcDbSymbolTableRecord\n100\nAcDbLayerTableRecord\n  2\nDEADFRONT\n 70\n0\n 62\n7\n  6\nCONTINUOUS\n370\n25\n390\n13\n347\n21\n  0\nLAYER\n  5\n38\n330\n1\n100\nAcDbSymbolTableRecord\n100\nAcDbLayerTableRecord\n  2\nBUS\n 70\n0\n 62\n7\n  6\nCONTINUOUS\n370\n35\n390\n13\n347\n21\n  0\nLAYER\n  5\n39\n330\n1\n100\nAcDbSymbolTableRecord\n100\nAcDbLayerTableRecord\n  2\nBREAKER\n 70\n0\n 62\n7\n  6\nCONTINUOUS\n370\n35\n390\n13\n347\n21\n  0\nLAYER\n  5\n3A\n330\n1\n100\nAcDbSymbolTableRecord\n100\nAcDbLayerTableRecord\n  2\nHANDLE\n 70\n0\n 62\n7\n  6\nCONTINUOUS\n370\n25\n390\n13\n347\n21\n  0\nLAYER\n  5\n3B\n330\n1\n100\nAcDbSymbolTableRecord\n100\nAcDbLayerTableRecord\n  2\nTIE\n 70\n0\n 62\n7\n  6\nCONTINUOUS\n370\n50\n390\n13\n347\n21\n  0\nLAYER\n  5\n3C\n330\n1\n100\nAcDbSymbolTableRecord\n100\nAcDbLayerTableRecord\n  2\nFILLER\n 70\n0\n 62\n8\n  6\nDASHED\n370\n18\n390\n13\n347\n21\n  0\nLAYER\n  5\n3D\n330\n1\n100\nAcDbSymbolTableRecord\n100\nAcDbLayerTableRecord\n  2\nHATCH\n 70\n0\n 62\n8\n  6\nCONTINUOUS\n370\n9\n390\n13\n347\n21\n  0\nLAYER\n  5\n3E\n330\n1\n100\nAcDbSymbolTableRecord\n100\nAcDbLayerTableRecord\n  2\nSHADE\n 70\n0\n 62\n254\n  6\nCONTINUOUS\n370\n0\n390\n13\n347\n21\n  0\nLAYER\n  5\n3F\n330\n1\n100\nAcDbSymbolTableRecord\n100\nAcDbLayerTableRecord\n  2\nTABLE\n 70\n0\n 62\n7\n  6\nCONTINUOUS\n370\n35\n390\n13\n347\n21\n  0\nLAYER\n  5\n40\n330\n1\n100\nAcDbSymbolTableRecord\n100\nAcDbLayerTableRecord\n  2\nTABLE-GRID\n 70\n0\n 62\n8\n  6\nCONTINUOUS\n370\n13\n390\n13\n347\n21\n  0\nENDTAB\n  0\nTABLE\n  2\nSTYLE\n  5\n5\n330\n0\n100\nAcDbSymbolTable\n 70\n3\n  0\nSTYLE\n  5\n29\n330\n5\n100\nAcDbSymbolTableRecord\n100\nAcDbTextStyleTableRecord\n  2\nStandard\n 70\n0\n 40\n0.0\n 41\n1.0\n 50\n0.0\n 71\n0\n 42\n2.5\n  3\ntxt\n  4\n\n  0\nSTYLE\n  5\n41\n330\n5\n100\nAcDbSymbolTableRecord\n100\nAcDbTextStyleTableRecord\n  2\nPANEL-STD\n 70\n0\n 40\n0.0\n 41\n1.0\n 50\n0.0\n 71\n0\n 42\n2.5\n  3\narial.ttf\n  4\n\n  0\nSTYLE\n  5\n42\n330\n5\n100\nAcDbSymbolTableRecord\n100\nAcDbTextStyleTableRecord\n  2\nPANEL-BOLD\n 70\n0\n 40\n0.0\n 41\n1.0\n 50\n0.0\n 71\n0\n 42\n2.5\n  3\narialbd.ttf\n  4\n\n  0\nENDTAB\n  0\nTABLE\n  2\nVIEW\n  5\n7\n330\n0\n100\nAcDbSymbolTable\n 70\n0\n  0\nENDTAB\n  0\nTABLE\n  2\nUCS\n  5\n6\n330\n0\n100\nAcDbSymbolTable\n 70\n0\n  0\nENDTAB\n  0\nTABLE\n  2\nAPPID\n  5\n3\n330\n0\n100\nAcDbSymbolTable\n 70\n3\n  0\nAPPID\n  5\n2A\n330\n3\n100\nAcDbSymbolTableRecord\n100\nAcDbRegAppTableRecord\n  2\nACAD\n 70\n0\n  0\nAPPID\n  5\n46\n330\n3\n100\nAcDbSymbolTableRecord\n100\nAcDbRegAppTableRecord\n  2\nHATCHBACKGROUNDCOLOR\n 70\n0\n  0\nAPPID\n  5\n47\n330\n3\n100\nAcDbSymbolTableRecord\n100\nAcDbRegAppTableRecord\n  2\nEZDXF\n 70\n0\n  0\nENDTAB\n  0\nTABLE\n  2\nDIMSTYLE\n  5\n4\n330\n0\n100\nAcDbSymbolTable\n 70\n1\n100\nAcDbDimStyleTable\n  0\nDIMSTYLE\n105\n2B\n330\n4\n100\nAcDbSymbolTableRecord\n100\nAcDbDimStyleTableRecord\n  2\nStandard\n 70\n0\n 40\n1.0\n 41\n2.5\n 42\n0.625\n 43\n3.75\n 44\n1.25\n 45\n0.0\n 46\n0.0\n 47\n0.0\n 48\n0.0\n 49\n2.5\n140\n2.5\n141\n2.5\n142\n0.0\n143\n0.03937007874\n144\n1.0\n145\n0.0\n146\n1.0\n147\n0.625\n148\n0.0\n 69\n0\n 70\n0\n 71\n0\n 72\n0\n 73\n0\n 74\n0\n 75\n0\n 76\n0\n 77\n1\n 78\n8\n 79\n3\n170\n0\n171\n3\n172\n1\n173\n0\n174\n0\n175\n0\n176\n0\n177\n0\n178\n0\n179\n2\n271\n2\n272\n2\n273\n2\n274\n3\n275\n0\n276\n0\n277\n2\n278\n44\n279\n0\n280\n0\n281\n0\n282\n0\n283\n0\n284\n8\n285\n0\n286\n0\n288\n0\n289\n3\n290\n0\n371\n-2\n372\n-2\n  0\nENDTAB\n  0\nTABLE\n  2\nBLOCK_RECORD\n  5\n9\n330\n0\n100\nAcDbSymbolTable\n 70\n2\n  0\nBLOCK_RECORD\n  5\n17\n330\n9\n100\nAcDbSymbolTableRecord\n100\nAcDbBlockTableRecord\n  2\n*Model_Space\n340\n1A\n 70\n0\n280\n1\n281\n0\n  0\nBLOCK_RECORD\n  5\n1B\n330\n9\n100\nAcDbSymbolTableRecord\n100\nAcDbBlockTableRecord\n  2\n*Paper_Space\n340\n1E\n 70\n0\n280\n1\n281\n0\n  0\nENDTAB\n  0\nENDSEC\n  0\nSECTION\n  2\nBLOCKS\n  0\nBLOCK\n  5\n18\n330\n17\n100\nAcDbEntity\n  8\n0\n100\nAcDbBlockBegin\n  2\n*Model_Space\n 70\n0\n 10\n0.0\n 20\n0.0\n 30\n0.0\n  3\n*Model_Space\n  1\n\n  0\nENDBLK\n  5\n19\n330\n17\n100\nAcDbEntity\n  8\n0\n100\nAcDbBlockEnd\n  0\nBLOCK\n  5\n1C\n330\n1B\n100\nAcDbEntity\n  8\n0\n100\nAcDbBlockBegin\n  2\n*Paper_Space\n 70\n0\n 10\n0.0\n 20\n0.0\n 30\n0.0\n  3\n*Paper_Space\n  1\n\n  0\nENDBLK\n  5\n1D\n330\n1B\n100\nAcDbEntity\n  8\n0\n100\nAcDbBlockEnd\n  0\nENDSEC\n  0\nSECTION\n  2\nENTITIES\n  0\nVIEWPORT\n  5\n43\n330\n1B\n100\nAcDbEntity\n 67\n1\n  8\nVIEWPORTS\n100\nAcDbViewport\n 10\n5.5\n 20\n8.5\n 30\n0.0\n 40\n12.100000000000001\n 41\n18.700000000000003\n 68\n1\n 69\n1\n 12\n5.5\n 22\n8.5\n 13\n0.0\n 23\n0.0\n 14\n10.0\n 24\n10.0\n 15\n10.0\n 25\n10.0\n 16\n0.0\n 26\n0.0\n 36\n1.0\n 17\n0.0\n 27\n0.0\n 37\n0.0\n 42\n50.0\n 43\n0.0\n 44\n0.0\n 45\n18.700000000000003\n 50\n0.0\n 51\n0.0\n 72\n100\n 90\n557088\n  1\n\n281\n0\n 71\n0\n 74\n0\n110\n0.0\n120\n0.0\n130\n0.0\n111\n1.0\n121\n0.0\n131\n0.0\n112\n0.0\n122\n1.0\n132\n0.0\n 79\n0\n146\n0.0\n282\n0\n  0\nVIEWPORT\n  5\n44\n330\n1B\n100\nAcDbEntity\n 67\n1\n  8\nVIEWPORTS\n100\nAcDbViewport\n 10\n5.5\n 20\n8.5\n 30\n0.0\n 40\n11.0\n 41\n17.0\n 68\n2\n 69\n3\n 12\n5.5\n 22\n8.5\n 13\n0.0\n 23\n0.0\n 14\n10.0\n 24\n10.0\n 15\n10.0\n 25\n10.0\n 16\n0.0\n 26\n0.0\n 36\n1.0\n 17\n0.0\n 27\n0.0\n 37\n0.0\n 42\n50.0\n 43\n0.0\n 44\n0.0\n 45\n17.0\n 50\n0.0\n 51\n0.0\n 72\n100\n 90\n0\n  1\n\n281\n0\n 71\n0\n 74\n0\n110\n0.0\n120\n0.0\n130\n0.0\n111\n1.0\n121\n0.0\n131\n0.0\n112\n0.0\n122\n1.0\n132\n0.0\n 79\n0\n146\n0.0\n282\n0\n%%ENTITIES%%  0\nENDSEC\n  0\nSECTION\n  2\nOBJECTS\n  0\nDICTIONARY\n  5\nA\n330\n0\n100\nAcDbDictionary\n281\n1\n  3\nACAD_COLOR\n350\nB\n  3\nACAD_GROUP\n350\nC\n  3\nACAD_LAYOUT\n350\nD\n  3\nACAD_MATERIAL\n350\nE\n  3\nACAD_MLEADERSTYLE\n350\nF\n  3\nACAD_MLINESTYLE\n350\n10\n  3\nACAD_PLOTSETTINGS\n350\n11\n  3\nACAD_PLOTSTYLENAME\n350\n12\n  3\nACAD_SCALELIST\n350\n14\n  3\nACAD_TABLESTYLE\n350\n15\n  3\nACAD_VISUALSTYLE\n350\n16\n  3\nEZDXF_META\n350\n2D\n  0\nDICTIONARY\n  5\nB\n330\nA\n100\nAcDbDictionary\n281\n1\n  0\nDICTIONARY\n  5\nC\n330\nA\n100\nAcDbDictionary\n281\n1\n  0\nDICTIONARY\n  5\nD\n330\nA\n100\nAcDbDictionary\n281\n1\n  3\nModel\n350\n1A\n  3\nANSI B\n350\n1E\n  0\nDICTIONARY\n  5\nE\n330\nA\n100\nAcDbDictionary\n281\n1\n  3\nByBlock\n350\n1F\n  3\nByLayer\n350\n20\n  3\nGlobal\n350\n21\n  0\nDICTIONARY\n  5\nF\n330\nA\n100\nAcDbDictionary\n281\n1\n  3\nStandard\n350\n2C\n  0\nDICTIONARY\n  5\n10\n330\nA\n100\nAcDbDictionary\n281\n1\n  3\nStandard\n350\n22\n  0\nDICTIONARY\n  5\n11\n330\nA\n100\nAcDbDictionary\n281\n1\n  0\nACDBDICTIONARYWDFLT\n  5\n12\n330\nA\n100\nAcDbDictionary\n281\n1\n  3\nNormal\n350\n13\n100\nAcDbDictionaryWithDefault\n340\n13\n  0\nACDBPLACEHOLDER\n  5\n13\n330\n12\n  0\nDICTIONARY\n  5\n14\n330\nA\n100\nAcDbDictionary\n281\n1\n  0\nDICTIONARY\n  5\n15\n330\nA\n100\nAcDbDictionary\n281\n1\n  0\nDICTIONARY\n  5\n16\n330\nA\n100\nAcDbDictionary\n281\n1\n  0\nLAYOUT\n  5\n1A\n330\nD\n100\nAcDbPlotSettings\n  1\n\n  4\nA3\n  6\n\n 40\n7.5\n 41\n20.0\n 42\n7.5\n 43\n20.0\n 44\n420.0\n 45\n297.0\n 46\n0.0\n 47\n0.0\n 48\n0.0\n 49\n0.0\n140\n0.0\n141\n0.0\n142\n1.0\n143\n1.0\n 70\n1024\n 72\n1\n 73\n0\n 74\n5\n  7\n\n 75\n16\n 76\n0\n 77\n2\n 78\n300\n147\n1.0\n148\n0.0\n149\n0.0\n100\nAcDbLayout\n  1\nModel\n 70\n1\n 71\n0\n 10\n0.0\n 20\n0.0\n 11\n420.0\n 21\n297.0\n 12\n0.0\n 22\n0.0\n 32\n0.0\n 14\n1e+20\n 24\n1e+20\n 34\n1e+20\n 15\n-1e+20\n 25\n-1e+20\n 35\n-1e+20\n146\n0.0\n 13\n0.0\n 23\n0.0\n 33\n0.0\n 16\n1.0\n 26\n0.0\n 36\n0.0\n 17\n0.0\n 27\n1.0\n 37\n0.0\n 76\n1\n330\n17\n  0\nLAYOUT\n  5\n1E\n330\nD\n100\nAcDbPlotSettings\n  1\n\n  2\nDWG to PDF.pc3\n  4\nezdxf_(11.00_x_17.00_Inches)\n  6\n\n 40\n0.0\n 41\n0.0\n 42\n0.0\n 43\n0.0\n 44\n279.4\n 45\n431.79999999999995\n 46\n0.0\n 47\n0.0\n 48\n0.0\n 49\n0.0\n140\n0.0\n141\n0.0\n142\n1.0\n143\n1.0\n 70\n672\n 72\n0\n 73\n0\n 74\n5\n  7\n\n 75\n16\n 76\n0\n 77\n2\n 78\n300\n147\n0.03937007874015748\n148\n0.0\n149\n0.0\n100\nAcDbLayout\n  1\nANSI B\n 70\n1\n 71\n1\n 10\n-0.0\n 20\n-0.0\n 11\n11.0\n 21\n17.0\n 12\n0.0\n 22\n0.0\n 32\n0.0\n 14\n1e+20\n 24\n1e+20\n 34\n1e+20\n 15\n-1e+20\n 25\n-1e+20\n 35\n-1e+20\n146\n0.0\n 13\n0.0\n 23\n0.0\n 33\n0.0\n 16\n1.0\n 26\n0.0\n 36\n0.0\n 17\n0.0\n 27\n1.0\n 37\n0.0\n 76\n1\n330\n1B\n331\n43\n  0\nMATERIAL\n  5\n1F\n102\n{ACAD_REACTORS\n330\nE\n102\n}\n330\nE\n100\nAcDbMaterial\n  1\nByBlock\n  2\n\n 70\n0\n 40\n1.0\n 71\n1\n 41\n1.0\n 91\n-1023410177\n 42\n1.0\n 72\n1\n  3\n\n 73\n1\n 74\n1\n 75\n1\n 44\n0.5\n 73\n0\n 45\n1.0\n 46\n1.0\n 77\n1\n  4\n\n 78\n1\n 79\n1\n170\n1\n 48\n1.0\n171\n1\n  6\n\n172\n1\n173\n1\n174\n1\n140\n1.0\n141\n1.0\n175\n1\n  7\n\n176\n1\n177\n1\n178\n1\n143\n1.0\n179\n1\n  8\n\n270\n1\n271\n1\n272\n1\n145\n1.0\n146\n1.0\n273\n1\n  9\n\n274\n1\n275\n1\n276\n1\n 42\n1.0\n 72\n1\n  3\n\n 73\n1\n 74\n1\n 75\n1\n 94\n63\n  0\nMATERIAL\n  5\n20\n102\n{ACAD_REACTORS\n330\nE\n102\n}\n330\nE\n100\nAcDbMaterial\n  1\nByLayer\n  2\n\n 70\n0\n 40\n1.0\n 71\n1\n 41\n1.0\n 91\n-1023410177\n 42\n1.0\n 72\n1\n  3\n\n 73\n1\n 74\n1\n 75\n1\n 44\n0.5\n 73\n0\n 45\n1.0\n 46\n1.0\n 77\n1\n  4\n\n 78\n1\n 79\n1\n170\n1\n 48\n1.0\n171\n1\n  6\n\n172\n1\n173\n1\n174\n1\n140\n1.0\n141\n1.0\n175\n1\n  7\n\n176\n1\n177\n1\n178\n1\n143\n1.0\n179\n1\n  8\n\n270\n1\n271\n1\n272\n1\n145\n1.0\n146\n1.0\n273\n1\n  9\n\n274\n1\n275\n1\n276\n1\n 42\n1.0\n 72\n1\n  3\n\n 73\n1\n 74\n1\n 75\n1\n 94\n63\n  0\nMATERIAL\n  5\n21\n102\n{ACAD_REACTORS\n330\nE\n102\n}\n330\nE\n100\nAcDbMaterial\n  1\nGlobal\n  2\n\n 70\n0\n 40\n1.0\n 71\n1\n 41\n1.0\n 91\n-1023410177\n 42\n1.0\n 72\n1\n  3\n\n 73\n1\n 74\n1\n 75\n1\n 44\n0.5\n 73\n0\n 45\n1.0\n 46\n1.0\n 77\n1\n  4\n\n 78\n1\n 79\n1\n170\n1\n 48\n1.0\n171\n1\n  6\n\n172\n1\n173\n1\n174\n1\n140\n1.0\n141\n1.0\n175\n1\n  7\n\n176\n1\n177\n1\n178\n1\n143\n1.0\n179\n1\n  8\n\n270\n1\n271\n1\n272\n1\n145\n1.0\n146\n1.0\n273\n1\n  9\n\n274\n1\n275\n1\n276\n1\n 42\n1.0\n 72\n1\n  3\n\n 73\n1\n 74\n1\n 75\n1\n 94\n63\n  0\nMLINESTYLE\n  5\n22\n102\n{ACAD_REACTORS\n330\n10\n102\n}\n330\n10\n100\nAcDbMlineStyle\n  2\nStandard\n 70\n0\n  3\n\n 62\n256\n 51\n90.0\n 52\n90.0\n 71\n2\n 49\n0.5\n 62\n256\n  6\nBYLAYER\n 49\n-0.5\n 62\n256\n  6\nBYLAYER\n  0\nMLEADERSTYLE\n  5\n2C\n102\n{ACAD_REACTORS\n330\nF\n102\n}\n330\nF\n100\nAcDbMLeaderStyle\n179\n2\n170\n2\n171\n1\n172\n0\n 90\n2\n 40\n0.0\n 41\n0.0\n173\n1\n 91\n-1056964608\n 92\n-2\n290\n1\n 42\n2.0\n291\n1\n 43\n8.0\n  3\nStandard\n 44\n4.0\n300\n\n342\n29\n174\n1\n175\n1\n176\n0\n178\n1\n 93\n-1056964608\n 45\n4.0\n292\n0\n297\n0\n 46\n4.0\n 94\n-1056964608\n 47\n1.0\n 49\n1.0\n140\n1.0\n294\n1\n141\n0.0\n177\n0\n142\n1.0\n295\n0\n296\n0\n143\n3.75\n271\n0\n272\n9\n273\n9\n  0\nDICTIONARY\n  5\n2D\n330\nA\n100\nAcDbDictionary\n280\n1\n281\n1\n  3\nCREATED_BY_EZDXF\n350\n2E\n  3\nWRITTEN_BY_EZDXF\n350\n48\n  0\nDICTIONARYVAR\n  5\n2E\n330\n2D\n100\nDictionaryVariables\n280\n0\n  1\n1.4.4 @ 2026-10-15T16:34:51.535971+00:00\n  0\nDICTIONARYVAR\n  5\n48\n330\n2D\n100\nDictionaryVariables\n280\n0\n  1\n1.4.4 @ 2026-10-15T16:34:51.538333+00:00\n  0\nENDSEC\n  0\nEOF\n"}
+</script>
+
+<script>
+/* =========================================================================
+ * Drawing engine: panel model -> sheet entities -> SVG preview / DXF file.
+ * All geometry in inches on an ANSI B (11 x 17 in) portrait sheet, y up.
+ * ========================================================================= */
+"use strict";
+
+// ------------------------------------------------------------------ model
+const KIND_SPAN = { single: 1, double: 2, triple: 3, tandem: 1, quad: 2, blank: 1 };
+const FEATURES = ["", "GFCI", "AFCI", "DF", "SPD"];
+const FEATURE_TEXT = { GFCI: "GFCI", AFCI: "AFCI", DF: "AFCI/GFCI", SPD: "SURGE" };
+
+class PanelError extends Error {
+  constructor(errors) { super(errors.join("; ")); this.errors = errors; }
+}
+
+function parsePole(d) {
+  d = d || {};
+  let amps = d.amps;
+  amps = amps === null || amps === undefined || amps === "" ? null : Math.trunc(Number(amps));
+  if (!Number.isFinite(amps)) amps = null;
+  const feat = String(d.feature || "").toUpperCase();
+  return { amps, label: String(d.label || "").trim(), feature: FEATURES.includes(feat) ? feat : "" };
+}
+
+class Panel {
+  get rows() { return Math.floor(this.spaces / 2); }
+
+  slot(space) {
+    if (this.numbering === "sequential") {
+      const n = this.rows;
+      return { col: space <= n ? 0 : 1, row: (space - 1) % n };
+    }
+    return { col: (space - 1) % 2, row: Math.floor((space - 1) / 2) };
+  }
+
+  spaceAt(col, row) {
+    return this.numbering === "sequential" ? row + 1 + col * this.rows : row * 2 + 1 + col;
+  }
+
+  spacesOf(br) {
+    const s = this.slot(br.space);
+    return Array.from({ length: br.span }, (_, i) => this.spaceAt(s.col, s.row + i));
+  }
+
+  phaseOfRow(row) { return this.phases === 3 ? "ABC"[row % 3] : "AB"[row % 2]; }
+
+  stats() {
+    let used = 0, circuits = 0;
+    for (const b of this.breakers) {
+      used += b.span;
+      circuits += b.kind === "tandem" || b.kind === "quad" ? 2 : 1;
+    }
+    return { spaces: this.spaces, used, free: this.spaces - used, circuits };
+  }
+
+  /** Map of every occupied space -> breaker occupying it. */
+  breakerAt() {
+    const m = new Map();
+    for (const b of this.breakers) for (const sp of this.spacesOf(b)) m.set(sp, b);
+    return m;
+  }
+
+  static fromDict(d) {
+    const errors = [];
+    const main = d.main || {};
+    const int = (v, def = null) => {
+      if (v === null || v === undefined || v === "") return def;
+      const n = Number(v);
+      if (!Number.isFinite(n)) { errors.push(`Not a number: ${JSON.stringify(v)}`); return def; }
+      return Math.trunc(n);
+    };
+    const str = (v) => String(v ?? "").trim();
+    const p = new Panel();
+    Object.assign(p, {
+      name: str(d.name) || "PANEL",
+      location: str(d.location),
+      manufacturer: str(d.manufacturer),
+      model: str(d.model),
+      voltage: str(d.voltage),
+      phases: int(d.phases, 1) === 3 ? 3 : 1,
+      mainKind: main.kind === "lugs" ? "lugs" : "breaker",
+      mainAmps: int(main.amps),
+      busAmps: int(d.bus_amps),
+      fedFrom: str(d.fed_from),
+      spaces: int(d.spaces, 40),
+      numbering: d.numbering === "sequential" ? "sequential" : "odd_even",
+      notes: (d.notes || []).map(str).filter(Boolean),
+      titleblock: Object.fromEntries(Object.entries(d.titleblock || {}).map(([k, v]) => [k, String(v ?? "")])),
+      breakers: [],
+      warnings: [],
+    });
+    if (!(p.spaces >= 2 && p.spaces <= 84 && p.spaces % 2 === 0)) {
+      errors.push("Number of spaces must be an even number between 2 and 84.");
+      throw new PanelError(errors);
+    }
+
+    const occupied = new Map();
+    for (const raw of d.breakers || []) {
+      const kind = raw.kind || "single";
+      if (!(kind in KIND_SPAN)) { errors.push(`Unknown breaker kind ${JSON.stringify(kind)}.`); continue; }
+      if (kind === "blank") continue;
+      const space = int(raw.space);
+      if (space === null || space < 1 || space > p.spaces) {
+        errors.push(`Space ${space} is outside 1..${p.spaces}.`);
+        continue;
+      }
+      const br = { space, kind, span: KIND_SPAN[kind], tieBelow: !!raw.tie_below,
+                   main: parsePole({}), a: parsePole({}), b: parsePole({}) };
+      if (kind === "single" || kind === "double" || kind === "triple") br.main = parsePole(raw);
+      else { br.a = parsePole(raw.a || raw.outer); br.b = parsePole(raw.b || raw.inner); }
+      if (p.slot(space).row + br.span > p.rows) {
+        errors.push(`${kind} breaker at space ${space} runs past the bottom of the panel.`);
+        continue;
+      }
+      const clash = p.spacesOf(br).filter((sp) => occupied.has(sp));
+      if (clash.length) {
+        errors.push(`Breaker at space ${space} overlaps breaker at space ${occupied.get(clash[0])}.`);
+        continue;
+      }
+      for (const sp of p.spacesOf(br)) occupied.set(sp, space);
+      p.breakers.push(br);
+    }
+
+    // handle ties: only between vertically adjacent 1-pole breakers
+    const bySpace = new Map(p.breakers.map((b) => [b.space, b]));
+    for (const br of p.breakers) {
+      if (!br.tieBelow) continue;
+      const s = p.slot(br.space);
+      const below = s.row + 1 < p.rows ? bySpace.get(p.spaceAt(s.col, s.row + 1)) : null;
+      if (br.kind !== "single" || !below || below.kind !== "single") {
+        p.warnings.push(`Handle tie at space ${br.space} ignored: needs a 1-pole breaker directly below.`);
+        br.tieBelow = false;
+      }
+    }
+    if (p.phases === 1) {
+      for (const br of p.breakers) {
+        if (br.kind === "triple") p.warnings.push(`3-pole breaker at space ${br.space} in a single-phase panel.`);
+      }
+    }
+    if (errors.length) throw new PanelError(errors);
+    p.breakers.sort((a, b) => a.space - b.space);
+    return p;
+  }
+}
+
+// ----------------------------------------------------------- sheet layout
+const SHEET_W = 11.0, SHEET_H = 17.0;
+const FRAME = 0.40;            // outer border offset from sheet edge
+const BAND = 0.25;             // zone-marking band
+const IX0 = FRAME + BAND, IY0 = FRAME + BAND;
+const IX1 = SHEET_W - IX0, IY1 = SHEET_H - IY0;
+const TB_W = 4.6, TB_H = 1.55; // title block
+const HEADER_H = 0.95;
+const BUS_HALF = 0.20, BUS_GAP = 0.04, BKR_W = 0.85;
+const DEADFRONT_PAD = 0.11, ENCL_PAD = 0.07;
+const INSET = 0.028;
+const LINE_SPACING = 1.55;     // baseline-to-baseline as a multiple of cap height
+const CAP_HEIGHT = 0.716;      // Arial cap height / em
+
+// name: [ACI color, lineweight (1/100 mm), dashed]
+const LAYERS = {
+  "FRAME": [7, 60], "FRAME-THIN": [7, 18], "TITLE": [7, 35], "TITLE-GRID": [7, 18],
+  "TEXT": [7, 25], "TEXT-MINOR": [8, 18], "ENCLOSURE": [7, 50], "DEADFRONT": [7, 25],
+  "BUS": [7, 35], "BREAKER": [7, 35], "HANDLE": [7, 25], "TIE": [7, 50],
+  "FILLER": [8, 18, true], "HATCH": [8, 9], "SHADE": [254, 0], "TABLE": [7, 35],
+  "TABLE-GRID": [8, 13],
+};
+const ACI_RGB = { 7: "#000000", 8: "#808080", 254: "#cfcfcf" };
+
+const REG = "PANEL-STD", BOLD = "PANEL-BOLD";
+
+// --------------------------------------------------------------- the sheet
+let _measureCtx = null;
+const _widthCache = new Map();
+
+/** Width of `s` in em-relative units of cap height 1 (Arial metrics). */
+function unitWidth(s, style) {
+  const key = style + "\u0000" + s;
+  let w = _widthCache.get(key);
+  if (w === undefined) {
+    if (!_measureCtx) _measureCtx = document.createElement("canvas").getContext("2d");
+    _measureCtx.font = `${style === BOLD ? "bold " : ""}100px Arial, "Liberation Sans", Helvetica, sans-serif`;
+    w = _measureCtx.measureText(s).width / 100 / CAP_HEIGHT;
+    _widthCache.set(key, w);
+  }
+  return w;
+}
+
+class Sheet {
+  constructor() { this.ents = []; }
+
+  width(s, h, style = REG) { return unitWidth(s, style) * h * 1.04; } // slack for CAD font differences
+
+  line(x0, y0, x1, y1, layer) { this.ents.push({ t: "line", layer, x0, y0, x1, y1 }); }
+
+  rect(x0, y0, x1, y1, layer, r = 0) {
+    [x0, x1] = [Math.min(x0, x1), Math.max(x0, x1)];
+    [y0, y1] = [Math.min(y0, y1), Math.max(y0, y1)];
+    r = Math.min(r, (x1 - x0) / 2.01, (y1 - y0) / 2.01);
+    let pts;
+    if (r <= 1e-6) {
+      pts = [[x0, y0, 0], [x1, y0, 0], [x1, y1, 0], [x0, y1, 0]];
+    } else {
+      const b = 0.41421356; // tan(22.5 deg): 90 deg fillet
+      pts = [[x0 + r, y0, 0], [x1 - r, y0, b], [x1, y0 + r, 0], [x1, y1 - r, b],
+             [x1 - r, y1, 0], [x0 + r, y1, b], [x0, y1 - r, 0], [x0, y0 + r, b]];
+    }
+    this.ents.push({ t: "poly", layer, pts, closed: true });
+  }
+
+  poly(pts, layer, closed = false) {
+    this.ents.push({ t: "poly", layer, pts: pts.map(([x, y]) => [x, y, 0]), closed });
+  }
+
+  circle(x, y, r, layer) { this.ents.push({ t: "circle", layer, x, y, r }); }
+
+  hatchRect(x0, y0, x1, y1, layer, pattern = "ANSI31", scale = 0.8) {
+    this.ents.push({ t: "hatch", layer, x0, y0, x1, y1, pattern, scale });
+  }
+
+  /** align: two letters, vertical (M/T/B) + horizontal (L/C/R). */
+  text(s, x, y, h, align = "MC", layer = "TEXT", style = REG) {
+    if (!s) return;
+    this.ents.push({ t: "text", layer, s: String(s), x, y, h, align, style });
+  }
+
+  wrap(s, w, h, style = REG) {
+    const lines = [];
+    for (const para of String(s).split("\n")) {
+      let cur = "";
+      for (const word of para.split(/\s+/).filter(Boolean)) {
+        const trial = (cur + " " + word).trim();
+        if (this.width(trial, h, style) <= w || !cur) cur = trial;
+        else { lines.push(cur); cur = word; }
+      }
+      lines.push(cur);
+    }
+    return lines;
+  }
+
+  /** Largest text height (<= hMax) at which `s` wraps into the box. */
+  fit(s, w, boxH, hMax, hMin, style = REG, maxLines = 3) {
+    let h = hMax;
+    for (;;) {
+      const nFit = Math.max(1, Math.min(maxLines, Math.floor((boxH - 0.6 * h) / (h * LINE_SPACING)) + 1));
+      let lines = this.wrap(s, w, h, style);
+      if (lines.length <= nFit && lines.every((l) => this.width(l, h, style) <= w)) return [lines, h];
+      if (h <= hMin + 1e-9) {
+        const all = lines;
+        lines = lines.slice(0, nFit);
+        const orig = lines[lines.length - 1];
+        let last = orig;
+        while (last && this.width(last + "…", h, style) > w) last = last.slice(0, -1);
+        lines[lines.length - 1] = last !== orig || all.length > nFit ? last.trimEnd() + "…" : last;
+        return [lines, h];
+      }
+      h = Math.max(hMin, h - 0.005);
+    }
+  }
+
+  /** Fit `s` into a box, vertically centred. */
+  textBox(s, x0, y0, x1, y1, hMax, { hMin = 0.06, align = "left", pad = 0.05, layer = "TEXT",
+                                     style = REG, maxLines = 3 } = {}) {
+    if (!s) return;
+    const w = (x1 - x0) - 2 * pad;
+    const [lines, h] = this.fit(s, w, (y1 - y0) - 0.04, hMax, hMin, style, maxLines);
+    const top = (y0 + y1) / 2 + (lines.length - 1) * h * LINE_SPACING / 2;
+    lines.forEach((ln, i) => {
+      const y = top - i * h * LINE_SPACING;
+      if (align === "left") this.text(ln, x0 + pad, y, h, "ML", layer, style);
+      else if (align === "right") this.text(ln, x1 - pad, y, h, "MR", layer, style);
+      else this.text(ln, (x0 + x1) / 2, y, h, "MC", layer, style);
+    });
+  }
+}
+
+// ---------------------------------------------------------- breaker symbols
+/** Breaker body placed against the bus. `out` = +1 if outboard is +x. */
+class BodyGeom {
+  constructor(xIn, out, yTop, rowH, width = BKR_W) {
+    Object.assign(this, { xIn, out, yTop, rowH, width });
+  }
+  get xOut() { return this.xIn + this.out * this.width; }
+  /** x at fraction of width measured from the bus side. */
+  x(frac) { return this.xIn + this.out * this.width * frac; }
+}
+
+/** Handle slot + toggle (in ON position, outboard). Returns toggle [xc, y0, y1]. */
+function toggle(sh, g, yc, ph, drawToggle = true) {
+  const k = g.width / BKR_W;
+  const slotH = Math.min(0.42 * ph, 0.16);
+  const slotW = 0.30 * k;
+  const xs0 = g.x(0.5) - g.out * slotW / 2, xs1 = g.x(0.5) + g.out * slotW / 2;
+  sh.rect(xs0, yc - slotH / 2, xs1, yc + slotH / 2, "HANDLE", 0.01);
+  const tw = 0.11 * k;
+  const tx1 = xs1 - g.out * 0.02;
+  const tx0 = tx1 - g.out * tw;
+  const th = slotH + Math.min(0.05, 0.25 * ph);
+  if (drawToggle) sh.rect(tx0, yc - th / 2, tx1, yc + th / 2, "HANDLE", 0.012);
+  return [(tx0 + tx1) / 2, yc - th / 2, yc + th / 2];
+}
+
+function ampsLabel(sh, g, yc, ph, amps, inboard = false) {
+  if (amps === null || amps === undefined) return;
+  let h = Math.min(0.095, 0.42 * ph) * g.width / BKR_W;
+  const zoneW = 0.30 * g.width; // clear width between handle slot and body edge
+  h = Math.min(h, 0.9 * zoneW / Math.max(sh.width(String(amps), 1, BOLD), 1e-6));
+  sh.text(String(amps), g.x(inboard ? 0.175 : 0.825), yc, h, "MC", "TEXT", BOLD);
+}
+
+function testButton(sh, g, yc, ph) {
+  const r = Math.min(0.04, 0.22 * ph) * g.width / BKR_W;
+  const xc = g.x(0.17);
+  sh.circle(xc, yc, r, "HANDLE");
+  sh.circle(xc, yc, r * 0.45, "HANDLE");
+}
+
+/** Pole division: short ticks at both body edges (keeps the face clear). */
+function poleTick(sh, g, y, layer = "HANDLE") {
+  const t = 0.07 * g.width / BKR_W;
+  sh.line(g.xIn, y, g.xIn + g.out * t, y, layer);
+  sh.line(g.xOut, y, g.xOut - g.out * t, y, layer);
+}
+
+/** Draw one breaker body spanning `span` rows from g.yTop. */
+function drawPoleSet(sh, g, span, kind, br) {
+  const rh = g.rowH;
+  const y1 = g.yTop - INSET, y0 = g.yTop - span * rh + INSET;
+  const xo = g.xOut, xi = g.xIn;
+  const k = g.width / BKR_W;
+  if (kind === "blank") {
+    sh.rect(xi, y0, xo, y1, "FILLER", 0.02);
+    sh.hatchRect(Math.min(xi, xo) + 0.03, y0 + 0.03, Math.max(xi, xo) - 0.03, y1 - 0.03, "HATCH",
+                 "ANSI31", Math.max(0.35, 0.8 * k));
+    return;
+  }
+  sh.rect(xi, y0, xo, y1, "BREAKER", 0.03);
+
+  if (kind === "single") {
+    const yc = g.yTop - rh / 2;
+    toggle(sh, g, yc, rh);
+    ampsLabel(sh, g, yc, rh, br.main.amps);
+    if (br.main.feature) testButton(sh, g, yc, rh);
+  } else if (kind === "double" || kind === "triple") {
+    const tops = [], bots = [];
+    let xc = 0;
+    for (let i = 0; i < span; i++) {
+      const yc = g.yTop - (i + 0.5) * rh;
+      if (i) poleTick(sh, g, g.yTop - i * rh, "BREAKER");
+      const t = toggle(sh, g, yc, rh, false);
+      xc = t[0]; bots.push(t[1]); tops.push(t[2]);
+    }
+    // common handle spanning all poles
+    const tw = 0.11 * k;
+    sh.rect(xc - tw / 2, bots[span - 1], xc + tw / 2, tops[0], "HANDLE", 0.012);
+    for (let i = 0; i < span - 1; i++) sh.line(xc - tw / 2, bots[i], xc + tw / 2, bots[i], "HANDLE");
+    ampsLabel(sh, g, g.yTop - rh / 2, rh, br.main.amps);
+    if (br.main.feature) testButton(sh, g, g.yTop - rh / 2, rh);
+  } else if (kind === "tandem") {
+    const ph = rh / 2;
+    poleTick(sh, g, g.yTop - ph);
+    [br.a, br.b].forEach((pole, i) => {
+      const yc = g.yTop - (i + 0.5) * ph;
+      toggle(sh, g, yc, ph);
+      ampsLabel(sh, g, yc, ph, pole.amps);
+      if (pole.feature) testButton(sh, g, yc, ph);
+    });
+  } else if (kind === "quad") {
+    const ph = rh / 2;
+    poleTick(sh, g, g.yTop - rh, "BREAKER");
+    poleTick(sh, g, g.yTop - ph);
+    poleTick(sh, g, g.yTop - 3 * ph);
+    const tw = 0.11 * k;
+    const ts = [0, 1, 2, 3].map((i) => toggle(sh, g, g.yTop - (i + 0.5) * ph, ph, i === 0 || i === 3));
+    const xc = ts[0][0];
+    // inner pair: common handle
+    sh.rect(xc - tw / 2, ts[2][1], xc + tw / 2, ts[1][2], "HANDLE", 0.012);
+    // outer pair: bracket tie passing outboard of the inner handle
+    const xb = xc + g.out * (tw / 2 + 0.05 * k);
+    const ya = (ts[0][1] + ts[0][2]) / 2, yb = (ts[3][1] + ts[3][2]) / 2;
+    sh.poly([[xc + g.out * tw / 2, ya], [xb, ya], [xb, yb], [xc + g.out * tw / 2, yb]], "TIE");
+    // the outer bracket occupies the outboard zone: put ratings inboard
+    ampsLabel(sh, g, g.yTop - 0.5 * ph, ph, br.a.amps, true);
+    ampsLabel(sh, g, g.yTop - 1.5 * ph, ph, br.b.amps, true);
+  }
+}
+
+/** External handle tie between a 1-pole breaker and the one below it. */
+function drawHandleTie(sh, g) {
+  const rh = g.rowH, k = g.width / BKR_W;
+  const xc = g.x(0.5) + g.out * (0.15 - 0.02 - 0.055) * k;
+  const ya = g.yTop - 0.5 * rh, yb = ya - rh;
+  const w = 0.035 * k;
+  sh.rect(xc - w, yb, xc + w, ya, "TIE");
+  for (const y of [ya, yb]) sh.circle(xc, y, w * 0.7, "TIE");
+}
+
+// ----------------------------------------------------------- sheet furniture
+function drawBorder(sh) {
+  sh.rect(FRAME, FRAME, SHEET_W - FRAME, SHEET_H - FRAME, "FRAME-THIN");
+  sh.rect(IX0, IY0, IX1, IY1, "FRAME");
+  // zones: numbers right-to-left, letters bottom-to-top (ASME Y14.1 style)
+  const ncol = 4, nrow = 6;
+  const zw = (SHEET_W - 2 * FRAME) / ncol, zh = (SHEET_H - 2 * FRAME) / nrow;
+  for (let i = 0; i < ncol; i++) {
+    const x0 = SHEET_W - FRAME - (i + 1) * zw;
+    if (i < ncol - 1) {
+      sh.line(x0, FRAME, x0, IY0, "FRAME-THIN");
+      sh.line(x0, IY1, x0, SHEET_H - FRAME, "FRAME-THIN");
+    }
+    for (const yc of [FRAME + BAND / 2, SHEET_H - FRAME - BAND / 2]) sh.text(String(i + 1), x0 + zw / 2, yc, 0.11);
+  }
+  for (let j = 0; j < nrow; j++) {
+    const y0 = FRAME + j * zh;
+    if (j) {
+      sh.line(FRAME, y0, IX0, y0, "FRAME-THIN");
+      sh.line(IX1, y0, SHEET_W - FRAME, y0, "FRAME-THIN");
+    }
+    for (const xc of [FRAME + BAND / 2, SHEET_W - FRAME - BAND / 2]) sh.text("ABCDEF"[j], xc, y0 + zh / 2, 0.11);
+  }
+}
+
+function cell(sh, x0, y0, x1, y1, label, value, { vh = 0.11, style = REG, align = "left", maxLines = 2 } = {}) {
+  sh.text(label, x0 + 0.05, y1 - 0.05, 0.055, "TL", "TEXT-MINOR");
+  sh.textBox(value, x0, y0, x1, y1 - 0.09, vh, { hMin: 0.06, align, style, maxLines });
+}
+
+function drawHeader(sh, p, stats) {
+  const y1 = IY1, y0 = y1 - HEADER_H;
+  sh.rect(IX0, y0, IX1, y1, "TITLE");
+  const xs = IX0 + 3.3;
+  sh.line(xs, y0, xs, y1, "TITLE");
+  sh.text("PANEL DESIGNATION", IX0 + 0.08, y1 - 0.08, 0.06, "TL", "TEXT-MINOR");
+  sh.textBox(p.name.toUpperCase(), IX0 + 0.03, y0 + 0.30, xs - 0.03, y1 - 0.14, 0.26,
+             { hMin: 0.12, style: BOLD, maxLines: 1 });
+  const loc = p.location ? `LOCATION: ${p.location.toUpperCase()}` : "";
+  sh.textBox(loc, IX0 + 0.03, y0 + 0.04, xs - 0.03, y0 + 0.30, 0.09, { hMin: 0.06, maxLines: 1 });
+
+  const main = p.mainKind === "breaker"
+    ? (p.mainAmps ? `${p.mainAmps}A MAIN BREAKER` : "MAIN BREAKER")
+    : (p.mainAmps ? `MAIN LUGS ONLY (${p.mainAmps}A)` : "MAIN LUGS ONLY");
+  const mfr = [p.manufacturer, p.model].filter(Boolean).join(" ");
+  const fields = [
+    ["SERVICE", p.voltage], ["MAIN", main], ["BUS RATING", p.busAmps ? `${p.busAmps}A` : ""],
+    ["SPACES", String(p.spaces)],
+    ["MANUFACTURER / MODEL", mfr], ["FED FROM", p.fedFrom],
+    ["CIRCUITS", String(stats.circuits)], ["SPACE USAGE", `${stats.used} USED / ${stats.free} OPEN`],
+  ];
+  let widths = [1.75, 1.95, 1.15, 1.15];
+  const scale = (IX1 - xs) / widths.reduce((a, b) => a + b);
+  widths = widths.map((w) => w * scale);
+  const ym = (y0 + y1) / 2;
+  sh.line(xs, ym, IX1, ym, "TITLE-GRID");
+  for (let r = 0; r < 2; r++) {
+    let x = xs;
+    for (let c = 0; c < 4; c++) {
+      const [label, value] = fields[r * 4 + c];
+      if (c) sh.line(x, r ? y0 : ym, x, r ? ym : y1, "TITLE-GRID");
+      const [cy0, cy1] = r === 0 ? [ym, y1] : [y0, ym];
+      cell(sh, x, cy0, x + widths[c], cy1, label, value.toUpperCase(), { vh: 0.105, maxLines: 2 });
+      x += widths[c];
+    }
+  }
+  return y0;
+}
+
+function isoToday() {
+  const d = new Date();
+  const z = (n) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${z(d.getMonth() + 1)}-${z(d.getDate())}`;
+}
+
+function drawTitleBlock(sh, p) {
+  const tb = p.titleblock;
+  const up = (k, def = "") => (tb[k] || def).toUpperCase();
+  const x0 = IX1 - TB_W, y0 = IY0, x1 = IX1, y1 = IY0 + TB_H;
+  sh.rect(x0, y0, x1, y1, "TITLE");
+  const ys = [y1];
+  for (const h of [0.40, 0.45, 0.35, 0.35]) ys.push(ys[ys.length - 1] - h);
+  for (const y of ys.slice(1, -1)) sh.line(x0, y, x1, y, "TITLE-GRID");
+  cell(sh, x0, ys[1], x1, ys[0], "PROJECT / PROPERTY", up("project"), { vh: 0.14, style: BOLD, maxLines: 1 });
+  cell(sh, x0, ys[2], x1, ys[1], "DRAWING TITLE", up("title", `${p.name} — PANEL DIRECTORY`),
+       { vh: 0.13, style: BOLD });
+  const row3 = [["DRAWN BY", up("drawn_by"), 1.6], ["DATE", tb.date || isoToday(), 1.5],
+                ["SCALE", up("scale", "NONE"), 1.5]];
+  const row4 = [["SIZE", "B", 0.55], ["DWG NO.", up("dwg_no"), 2.15], ["REV", up("rev"), 0.55],
+                ["SHEET", up("sheet", "1 OF 1"), 1.35]];
+  for (const [row, ya, yb] of [[row3, ys[3], ys[2]], [row4, ys[4], ys[3]]]) {
+    let x = x0;
+    row.forEach(([lab, val, w], i) => {
+      if (i) sh.line(x, ya, x, yb, "TITLE-GRID");
+      cell(sh, x, ya, x + w, yb, lab, val, {
+        vh: lab === "SIZE" ? 0.15 : 0.11, align: "center", maxLines: 1,
+        style: lab === "SIZE" || lab === "REV" ? BOLD : REG,
+      });
+      x += w;
+    });
+  }
+}
+
+/**
+ * Notes block beside the title block. Returns the y of its top edge.
+ * Text shrinks to fit the title-block height; if the notes still don't fit at
+ * the minimum size, the block grows upward (taking space from the body).
+ */
+function drawNotes(sh, p) {
+  const x0 = IX0, x1 = IX1 - TB_W, y0 = IY0;
+  const head = 0.28, numW = 0.25;
+  const w = (x1 - x0) - numW - 0.2;
+  const hMax = 0.095, hMin = 0.07;
+  const layout = (h) => {
+    const blocks = p.notes.map((n) => sh.wrap(n, w, h));
+    return [blocks, head + blocks.reduce((n, b) => n + b.length, 0) * h * LINE_SPACING + 0.08];
+  };
+  let h = hMax;
+  let [blocks, need] = layout(h);
+  while (need > TB_H && h > hMin + 1e-9) {
+    h = Math.max(hMin, h - 0.005);
+    [blocks, need] = layout(h);
+  }
+  const y1 = y0 + Math.max(TB_H, need);
+  sh.rect(x0, y0, x1, y1, "TITLE");
+  sh.text("NOTES", x0 + 0.08, y1 - 0.08, 0.085, "TL", "TEXT", BOLD);
+  let y = y1 - head - h / 2;
+  blocks.forEach((blk, i) => {
+    sh.text(`${i + 1}.`, x0 + 0.1, y, h, "ML");
+    for (const ln of blk) {
+      sh.text(ln, x0 + 0.1 + numW, y, h, "ML");
+      y -= h * LINE_SPACING;
+    }
+  });
+  return y1;
+}
+
+// --------------------------------------------------------- panel + directory
+const ampText = (pole, poles) => (pole.amps === null ? "" : `${pole.amps}A` + (poles > 1 ? ` ${poles}P` : ""));
+const descText = (p, s) => (["0", "false", "False"].includes(p.titleblock.uppercase ?? "1") ? s : s.toUpperCase());
+const sum2 = (a) => a[0] + a[1];
+
+function drawPanel(sh, p, top, bottom) {
+  const cx = SHEET_W / 2;
+  const mainH = 1.05;
+  const rows = p.rows;
+  const avail = (top - mainH) - 0.18 - bottom;
+  const rh = Math.min(0.62, avail / rows);
+  const rowsTop = top - mainH;
+  const rowsBot = rowsTop - rows * rh;
+
+  const dfHalf = BUS_HALF + BUS_GAP + BKR_W + DEADFRONT_PAD;
+  const enHalf = dfHalf + ENCL_PAD;
+  const enY1 = top, enY0 = rowsBot - 0.18;
+
+  // enclosure (can + dead-front opening)
+  sh.rect(cx - enHalf, enY0, cx + enHalf, enY1, "ENCLOSURE", 0.08);
+  sh.rect(cx - dfHalf, enY0 + ENCL_PAD, cx + dfHalf, enY1 - ENCL_PAD, "DEADFRONT", 0.05);
+
+  // main
+  const npole = p.phases === 3 ? 3 : 2;
+  const mW = 0.36 * npole + 0.22;
+  const mY1 = enY1 - ENCL_PAD - 0.12, mY0 = mY1 - 0.62;
+  sh.rect(cx - BUS_HALF, rowsBot - 0.06, cx + BUS_HALF, mY0, "BUS");
+  const phases = npole === 2 ? ["L1", "L2"] : ["A", "B", "C"];
+  const poleX = Array.from({ length: npole }, (_, i) => cx + (i - (npole - 1) / 2) * 0.36);
+  if (p.mainKind === "breaker") {
+    sh.rect(cx - mW / 2, mY0, cx + mW / 2, mY1, "BREAKER", 0.04);
+    const hy0 = mY1 - 0.38, hy1 = mY1 - 0.08;
+    for (const x of poleX) {
+      sh.rect(x - 0.07, hy0, x + 0.07, hy1, "HANDLE", 0.012);
+      sh.rect(x - 0.045, hy1 - 0.12, x + 0.045, hy1 - 0.02, "HANDLE", 0.01); // toggle ON (up)
+    }
+    sh.rect(poleX[0] - 0.045, hy1 - 0.09, poleX[npole - 1] + 0.045, hy1 - 0.05, "TIE");
+    sh.text(p.mainAmps ? `MAIN ${p.mainAmps}A` : "MAIN", cx, mY0 + 0.11, 0.085, "MC", "TEXT", BOLD);
+  } else {
+    for (const x of poleX) {
+      sh.rect(x - 0.11, mY0, x + 0.11, mY0 + 0.24, "BUS", 0.02);
+      sh.circle(x, mY0 + 0.12, 0.055, "HANDLE");
+      sh.line(x, mY0 + 0.24, x, mY1 + 0.05, "BUS");
+    }
+    sh.textBox("MAIN LUGS", poleX[npole - 1] + 0.12, mY0 - 0.05, cx + dfHalf - 0.02, mY0 + 0.29, 0.08,
+               { hMin: 0.06, style: BOLD, maxLines: 2, pad: 0.02 });
+  }
+  poleX.forEach((x, i) => {
+    if (p.mainKind === "breaker") sh.text(phases[i], x, mY1 + 0.02, 0.065, "BC", "TEXT-MINOR");
+    else sh.text(phases[i], x + 0.03, mY1 - 0.03, 0.065, "TL", "TEXT-MINOR");
+  });
+
+  // bus phase letters
+  for (let r = 0; r < rows; r++) {
+    sh.text(p.phaseOfRow(r), cx, rowsTop - (r + 0.5) * rh, Math.min(0.075, rh * 0.3), "MC", "TEXT-MINOR");
+    if (r) {
+      const y = rowsTop - r * rh;
+      sh.line(cx - BUS_HALF, y, cx - BUS_HALF + 0.05, y, "TEXT-MINOR");
+      sh.line(cx + BUS_HALF, y, cx + BUS_HALF - 0.05, y, "TEXT-MINOR");
+    }
+  }
+
+  // breakers
+  const occ = p.breakerAt();
+  const geom = (col, row) => col === 0
+    ? new BodyGeom(cx - BUS_HALF - BUS_GAP, -1, rowsTop - row * rh, rh)
+    : new BodyGeom(cx + BUS_HALF + BUS_GAP, +1, rowsTop - row * rh, rh);
+  for (const col of [0, 1]) {
+    for (let row = 0; row < rows; row++) {
+      const sp = p.spaceAt(col, row);
+      const br = occ.get(sp);
+      if (!br) drawPoleSet(sh, geom(col, row), 1, "blank", null);
+      else if (br.space === sp) {
+        drawPoleSet(sh, geom(col, row), br.span, br.kind, br);
+        if (br.tieBelow) drawHandleTie(sh, geom(col, row));
+      }
+    }
+  }
+
+  // directories
+  const gap = 0.14, cktW = 0.42, ampW = 0.62, hdrH = 0.30;
+  for (const col of [0, 1]) {
+    let tx0, tx1, desc, amp, ckt;
+    if (col === 0) {
+      tx0 = IX0 + 0.12; tx1 = cx - enHalf - gap;
+      desc = [tx0, tx1 - cktW - ampW]; amp = [desc[1], desc[1] + ampW]; ckt = [amp[1], tx1];
+    } else {
+      tx0 = cx + enHalf + gap; tx1 = IX1 - 0.12;
+      ckt = [tx0, tx0 + cktW]; amp = [ckt[1], ckt[1] + ampW]; desc = [amp[1], tx1];
+    }
+    const hy0 = rowsTop, hy1 = rowsTop + hdrH, hyc = (hy0 + hy1) / 2;
+    sh.hatchRect(tx0, hy0, tx1, hy1, "SHADE", "SOLID");
+    sh.rect(tx0, hy0, tx1, hy1, "TABLE");
+    sh.text("CIRCUIT DESCRIPTION", sum2(desc) / 2, hyc, 0.08, "MC", "TEXT", BOLD);
+    sh.text("TRIP", sum2(amp) / 2, hyc, 0.08, "MC", "TEXT", BOLD);
+    sh.text("CKT", sum2(ckt) / 2, hyc, 0.08, "MC", "TEXT", BOLD);
+    for (const xv of amp) sh.line(xv, hy0, xv, hy1, "TABLE");
+    sh.rect(tx0, rowsBot, tx1, rowsTop, "TABLE");
+    for (const xv of amp) sh.line(xv, rowsBot, xv, rowsTop, "TABLE-GRID");
+    drawDirectoryColumn(sh, p, col, occ, rowsTop, rh, desc, amp, ckt);
+  }
+}
+
+function tiedFromAbove(p, occ, br) {
+  const s = p.slot(br.space);
+  if (s.row === 0) return false;
+  const above = occ.get(p.spaceAt(s.col, s.row - 1));
+  return !!(above && above.tieBelow);
+}
+
+function drawDirectoryColumn(sh, p, col, occ, rowsTop, rh, desc, amp, ckt) {
+  const rows = p.rows;
+  const textH = Math.min(0.105, 0.36 * rh);
+  const rowL = col === 0 ? desc[0] : ckt[0], rowR = col === 0 ? ckt[1] : desc[1];
+  let row = 0;
+  while (row < rows) {
+    const sp = p.spaceAt(col, row);
+    const br = occ.get(sp);
+    const y1 = rowsTop - row * rh;
+    const span = br && br.space === sp ? br.span : 1;
+    const y0 = y1 - span * rh;
+    if (row + span < rows) sh.line(rowL, y0, rowR, y0, "TABLE-GRID");
+
+    if (!br) {
+      sh.text(String(sp), sum2(ckt) / 2, (y0 + y1) / 2, textH, "MC", "TEXT", BOLD);
+      sh.text("SPACE", desc[0] + 0.06, (y0 + y1) / 2, textH * 0.8, "ML", "TEXT-MINOR");
+      sh.text("—", sum2(amp) / 2, (y0 + y1) / 2, textH * 0.8, "MC", "TEXT-MINOR");
+    } else if (br.kind === "tandem") {
+      sh.line(rowL, (y0 + y1) / 2, rowR, (y0 + y1) / 2, "TABLE-GRID");
+      const th = Math.min(textH, 0.36 * rh / 1.6);
+      [[br.a, "A"], [br.b, "B"]].forEach(([pole, suf], i) => {
+        const cy1 = y1 - i * rh / 2, cy0 = cy1 - rh / 2;
+        sh.text(`${sp}${suf}`, sum2(ckt) / 2, (cy0 + cy1) / 2, th, "MC", "TEXT", BOLD);
+        ampCell(sh, pole, 1, amp, cy0, cy1, th, { singleLine: true });
+        sh.textBox(descText(p, pole.label), desc[0], cy0, desc[1], cy1, th, { hMin: 0.055, maxLines: 1 });
+      });
+    } else {
+      // circuit numbers, one per physical space
+      for (let i = 0; i < span; i++) {
+        const si = p.spaceAt(col, row + i);
+        const yc = y1 - (i + 0.5) * rh;
+        if (br.kind === "quad") {
+          const th = Math.min(textH, 0.36 * rh / 1.6);
+          sh.text(`${si}A`, sum2(ckt) / 2, yc + rh / 4, th, "MC", "TEXT", BOLD);
+          sh.text(`${si}B`, sum2(ckt) / 2, yc - rh / 4, th, "MC", "TEXT", BOLD);
+        } else {
+          sh.text(String(si), sum2(ckt) / 2, yc, textH, "MC", "TEXT", BOLD);
+        }
+        if (i) sh.line(ckt[0], y1 - i * rh, ckt[1], y1 - i * rh, "TABLE-GRID");
+      }
+      if (br.kind === "quad") {
+        const s2 = p.spaceAt(col, row + 1);
+        const ym = (y0 + y1) / 2;
+        sh.line(desc[0], ym, desc[1], ym, "TABLE-GRID");
+        sh.line(amp[0], ym, amp[1], ym, "TABLE-GRID");
+        for (const [pole, tag, cy0, cy1] of [[br.a, `OUTER ${sp}A/${s2}B`, ym, y1],
+                                             [br.b, `INNER ${sp}B/${s2}A`, y0, ym]]) {
+          ampCell(sh, pole, 2, amp, cy0, cy1, textH);
+          sh.text(tag, desc[0] + 0.06, cy1 - 0.035, 0.05, "TL", "TEXT-MINOR");
+          sh.textBox(descText(p, pole.label), desc[0], cy0, desc[1], cy1 - 0.06, textH,
+                     { hMin: 0.055, maxLines: 2 });
+        }
+      } else {
+        const poles = { single: 1, double: 2, triple: 3 }[br.kind];
+        ampCell(sh, br.main, poles, amp, y0, y1, textH,
+                { extra: br.tieBelow || tiedFromAbove(p, occ, br) ? "TIED" : "" });
+        sh.textBox(descText(p, br.main.label), desc[0], y0, desc[1], y1, textH,
+                   { hMin: 0.055, maxLines: Math.max(2, span * 2) });
+      }
+    }
+    row += span;
+  }
+}
+
+function ampCell(sh, pole, poles, amp, y0, y1, h, { singleLine = false, extra = "" } = {}) {
+  const main = ampText(pole, poles);
+  const sub = [FEATURE_TEXT[pole.feature] || "", extra].filter(Boolean).join(" · ");
+  const yc = (y0 + y1) / 2;
+  const one = (s) => sh.textBox(s, amp[0], y0, amp[1], y1, h,
+                                { hMin: 0.045, align: "center", style: BOLD, maxLines: 1, pad: 0.03 });
+  if (singleLine || !sub) { one(singleLine && sub ? `${main} ${sub}`.trim() : main); return; }
+  const subH = Math.min(0.06, h * 0.7), gap = 0.02;
+  const total = h + gap + subH;
+  if (total > (y1 - y0) - 0.03) { one(`${main} ${sub}`); return; }
+  const top = yc + total / 2;
+  sh.textBox(main, amp[0], top - h - 0.01, amp[1], top + 0.01, h,
+             { hMin: 0.05, align: "center", style: BOLD, maxLines: 1, pad: 0.03 });
+  sh.textBox(sub, amp[0], top - total - 0.01, amp[1], top - h - gap + 0.01, subH,
+             { hMin: 0.04, align: "center", layer: "TEXT-MINOR", maxLines: 1, pad: 0.02 });
+}
+
+/** Build the sheet for a panel config. Throws PanelError on invalid input. */
+function buildSheet(cfg) {
+  const p = Panel.fromDict(cfg);
+  const sh = new Sheet();
+  const stats = p.stats();
+  drawBorder(sh);
+  const headerBottom = drawHeader(sh, p, stats);
+  drawTitleBlock(sh, p);
+  const notesTop = drawNotes(sh, p);
+  drawPanel(sh, p, headerBottom - 0.2, notesTop + 0.2);
+  return { sheet: sh, panel: p, stats };
+}
+
+// ------------------------------------------------------------- SVG output
+const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
+const n4 = (v) => +v.toFixed(4);
+
+/** 45-degree hatch lines (ANSI31) clipped to a rectangle. */
+function ansi31Segments(x0, y0, x1, y1, spacing) {
+  // lines x - y = c, for c on a grid of spacing*sqrt(2) along x
+  const step = spacing * Math.SQRT2;
+  const segs = [];
+  const cMin = x0 - y1, cMax = x1 - y0;
+  for (let c = Math.ceil(cMin / step) * step; c <= cMax; c += step) {
+    // intersect with rect: points where x = y + c
+    const ya = Math.max(y0, x0 - c), yb = Math.min(y1, x1 - c);
+    if (yb - ya > 1e-6) segs.push([ya + c, ya, yb + c, yb]);
+  }
+  return segs;
+}
+
+function sheetToSvg(sh, { width = "100%", height = "100%" } = {}) {
+  const Y = (y) => n4(SHEET_H - y);
+  const strokeW = (layer) => Math.max(LAYERS[layer][1], 9) / 100 / 25.4;
+  const color = (layer) => ACI_RGB[LAYERS[layer][0]];
+  const out = [];
+  const style = (layer) => {
+    const dash = LAYERS[layer][2] ? ` stroke-dasharray="0.125 0.0625"` : "";
+    return `stroke="${color(layer)}" stroke-width="${n4(strokeW(layer))}"${dash}`;
+  };
+  // draw fills first so outlines sit on top
+  for (const e of sh.ents) {
+    if (e.t !== "hatch") continue;
+    if (e.pattern === "SOLID") {
+      out.push(`<rect x="${n4(e.x0)}" y="${Y(e.y1)}" width="${n4(e.x1 - e.x0)}" height="${n4(e.y1 - e.y0)}" fill="${color(e.layer)}"/>`);
+    } else {
+      const d = ansi31Segments(e.x0, e.y0, e.x1, e.y1, 0.125 * e.scale)
+        .map(([a, b, c, dd]) => `M${n4(a)} ${Y(b)}L${n4(c)} ${Y(dd)}`).join("");
+      out.push(`<path d="${d}" fill="none" ${style(e.layer)}/>`);
+    }
+  }
+  for (const e of sh.ents) {
+    if (e.t === "line") {
+      out.push(`<line x1="${n4(e.x0)}" y1="${Y(e.y0)}" x2="${n4(e.x1)}" y2="${Y(e.y1)}" ${style(e.layer)}/>`);
+    } else if (e.t === "circle") {
+      out.push(`<circle cx="${n4(e.x)}" cy="${Y(e.y)}" r="${n4(e.r)}" fill="none" ${style(e.layer)}/>`);
+    } else if (e.t === "poly") {
+      const pts = e.pts, n = pts.length;
+      let d = `M${n4(pts[0][0])} ${Y(pts[0][1])}`;
+      const segs = e.closed ? n : n - 1;
+      for (let i = 0; i < segs; i++) {
+        const [xa, ya, bulge] = pts[i], [xb, yb] = pts[(i + 1) % n];
+        if (Math.abs(bulge) < 1e-9) { d += `L${n4(xb)} ${Y(yb)}`; continue; }
+        const theta = 4 * Math.atan(Math.abs(bulge));
+        const chord = Math.hypot(xb - xa, yb - ya);
+        const r = chord / (2 * Math.sin(theta / 2));
+        // DXF positive bulge = CCW (y up) -> SVG sweep-flag 0 after the y flip
+        d += `A${n4(r)} ${n4(r)} 0 ${theta > Math.PI ? 1 : 0} ${bulge > 0 ? 0 : 1} ${n4(xb)} ${Y(yb)}`;
+      }
+      if (e.closed) d += "Z";
+      out.push(`<path d="${d}" fill="none" stroke-linejoin="round" ${style(e.layer)}/>`);
+    } else if (e.t === "text") {
+      const [v, hz] = e.align;
+      const base = v === "M" ? e.y - e.h / 2 : v === "T" ? e.y - e.h : e.y;
+      const anchor = hz === "L" ? "start" : hz === "R" ? "end" : "middle";
+      out.push(`<text x="${n4(e.x)}" y="${Y(base)}" font-size="${n4(e.h / CAP_HEIGHT)}" text-anchor="${anchor}"` +
+               `${e.style === BOLD ? ' font-weight="bold"' : ""} fill="${color(e.layer)}">${esc(e.s)}</text>`);
+    }
+  }
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${SHEET_W} ${SHEET_H}" width="${width}" height="${height}" ` +
+         `font-family="Arial, 'Liberation Sans', Helvetica, sans-serif" stroke-linecap="round">` +
+         `<rect width="${SHEET_W}" height="${SHEET_H}" fill="#fff"/>${out.join("")}</svg>`;
+}
+
+// ------------------------------------------------------------- DXF output
+/**
+ * Splices the entities into the embedded R2013 template (generated by
+ * tools/make_dxf_template.py: header, layers, Arial styles, ANSI B layout).
+ */
+function sheetToDxf(sh) {
+  const tpl = JSON.parse(document.getElementById("dxf-template").textContent);
+  let handle = parseInt(tpl.seed, 16);
+  const out = [];
+  const tag = (code, value) => out.push(String(code).padStart(3, " "), String(value));
+  const num = (v) => {
+    let s = String(+v.toFixed(6));
+    if (s === "-0") s = "0";
+    return s.includes(".") || s.includes("e") ? s : s + ".0";
+  };
+  const head = (type, layer, sub, color) => {
+    tag(0, type); tag(5, (handle++).toString(16).toUpperCase()); tag(330, tpl.owner);
+    tag(100, "AcDbEntity"); tag(8, layer);
+    if (color !== undefined) tag(62, color);
+    tag(100, sub);
+  };
+  const ALIGN_H = { L: 0, C: 1, R: 2 }, ALIGN_V = { B: 1, M: 2, T: 3 };
+
+  for (const e of sh.ents) {
+    if (e.t === "line") {
+      head("LINE", e.layer, "AcDbLine");
+      tag(10, num(e.x0)); tag(20, num(e.y0)); tag(30, "0.0");
+      tag(11, num(e.x1)); tag(21, num(e.y1)); tag(31, "0.0");
+    } else if (e.t === "poly") {
+      head("LWPOLYLINE", e.layer, "AcDbPolyline");
+      tag(90, e.pts.length); tag(70, e.closed ? 1 : 0);
+      for (const [x, y, b] of e.pts) {
+        tag(10, num(x)); tag(20, num(y));
+        if (b) tag(42, num(b));
+      }
+    } else if (e.t === "circle") {
+      head("CIRCLE", e.layer, "AcDbCircle");
+      tag(10, num(e.x)); tag(20, num(e.y)); tag(30, "0.0"); tag(40, num(e.r));
+    } else if (e.t === "text") {
+      head("TEXT", e.layer, "AcDbText");
+      tag(10, num(e.x)); tag(20, num(e.y)); tag(30, "0.0"); tag(40, num(e.h));
+      tag(1, e.s.replace(/%%/g, "%%%")); tag(7, e.style);
+      const h = ALIGN_H[e.align[1]];
+      if (h) tag(72, h);
+      tag(11, num(e.x)); tag(21, num(e.y)); tag(31, "0.0");
+      tag(100, "AcDbText"); tag(73, ALIGN_V[e.align[0]]);
+    } else if (e.t === "hatch") {
+      const solid = e.pattern === "SOLID";
+      head("HATCH", e.layer, "AcDbHatch", solid ? LAYERS[e.layer][0] : undefined);
+      tag(10, "0.0"); tag(20, "0.0"); tag(30, "0.0");
+      tag(210, "0.0"); tag(220, "0.0"); tag(230, "1.0");
+      tag(2, solid ? "SOLID" : "ANSI31"); tag(70, solid ? 1 : 0); tag(71, 0);
+      tag(91, 1); tag(92, 3); tag(72, 0); tag(73, 1); tag(93, 4);
+      for (const [x, y] of [[e.x0, e.y0], [e.x1, e.y0], [e.x1, e.y1], [e.x0, e.y1]]) { tag(10, num(x)); tag(20, num(y)); }
+      tag(97, 0); tag(75, 1); tag(76, 1);
+      if (!solid) {
+        const d = 0.125 * e.scale * Math.SQRT1_2;
+        tag(52, "0.0"); tag(41, num(e.scale)); tag(77, 0); tag(78, 1);
+        tag(53, "45.0"); tag(43, "0.0"); tag(44, "0.0"); tag(45, num(-d)); tag(46, num(d)); tag(79, 0);
+      }
+      tag(98, 0);
+    }
+  }
+  return tpl.dxf
+    .replace("%%ENTITIES%%", () => (out.length ? out.join("\n") + "\n" : ""))
+    .replace("%%HANDSEED%%", () => handle.toString(16).toUpperCase());
+}
+
+/* =========================================================================
+ * Editor UI
+ * ========================================================================= */
+const SPAN = { blank: 1, single: 1, double: 2, triple: 3, tandem: 1, quad: 2 };
+const KIND_LABEL = {
+  blank: "Open space / filler",
+  single: "1-pole",
+  double: "2-pole",
+  triple: "3-pole",
+  tandem: "Tandem (2 in 1 space)",
+  quad: "Quadplex (2×2-pole)",
+};
+const FEATURE_OPTIONS = [["", "Std"], ["GFCI", "GFCI"], ["AFCI", "AFCI"], ["DF", "Dual"], ["SPD", "Surge"]];
+const STORE_KEY = "panelDrafter.v1";
+
+const $ = (s) => document.querySelector(s);
+const el = (tag, attrs = {}, ...kids) => {
+  const e = document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs)) {
+    if (k === "class") e.className = v;
+    else if (k.startsWith("on")) e.addEventListener(k.slice(2), v);
+    else if (v === true) e.setAttribute(k, "");
+    else if (v !== false && v != null) e.setAttribute(k, v);
+  }
+  for (const k of kids) if (k != null) e.append(k);
+  return e;
+};
+
+// ---------------------------------------------------------------- storage
+function today() { return new Date().toISOString().slice(0, 10); }
+
+function blankPanel(name = "New Panel") {
+  return {
+    name, location: "", manufacturer: "", model: "",
+    voltage: "120/240V 1Φ 3W", phases: 1,
+    main: { kind: "breaker", amps: 200 }, bus_amps: 200, fed_from: "",
+    spaces: 40, numbering: "odd_even", breakers: [], notes: [],
+    titleblock: { project: "", drawn_by: "", date: today(), dwg_no: "", rev: "", sheet: "1 OF 1", uppercase: "1" },
+  };
+}
+
+let store = { panels: [], cur: 0 };
+function load() {
+  try {
+    const s = JSON.parse(localStorage.getItem(STORE_KEY));
+    if (s && Array.isArray(s.panels) && s.panels.length) store = s;
+  } catch (_) { /* ignore */ }
+}
+function save() {
+  try { localStorage.setItem(STORE_KEY, JSON.stringify(store)); } catch (_) { /* ignore */ }
+}
+const cfg = () => store.panels[store.cur];
+
+// --------------------------------------------------------------- geometry
+const rows = () => Math.floor(cfg().spaces / 2);
+function slotOf(space) {
+  const n = rows();
+  if (cfg().numbering === "sequential") return { col: space <= n ? 0 : 1, row: (space - 1) % n };
+  return { col: (space - 1) % 2, row: Math.floor((space - 1) / 2) };
+}
+function spaceAt(col, row) {
+  return cfg().numbering === "sequential" ? row + 1 + col * rows() : row * 2 + 1 + col;
+}
+function spacesOf(b) {
+  const s = slotOf(b.space);
+  return Array.from({ length: SPAN[b.kind] }, (_, i) => spaceAt(s.col, s.row + i));
+}
+function phaseOf(row) {
+  return Number(cfg().phases) === 3 ? "ABC"[row % 3] : "AB"[row % 2];
+}
+function occupancy() {
+  const occ = {};
+  for (const b of cfg().breakers) {
+    if (b.space < 1 || b.space > cfg().spaces) continue;
+    const s = slotOf(b.space);
+    if (s.row + SPAN[b.kind] > rows()) continue;
+    for (const sp of spacesOf(b)) occ[sp] = b;
+  }
+  return occ;
+}
+
+// ------------------------------------------------------------ form fields
+function getPath(obj, path) { return path.split(".").reduce((o, k) => (o == null ? o : o[k]), obj); }
+function setPath(obj, path, val) {
+  const ks = path.split(".");
+  let o = obj;
+  for (const k of ks.slice(0, -1)) o = o[k] ??= {};
+  o[ks.at(-1)] = val;
+}
+
+function bindFields() {
+  document.querySelectorAll("[data-k]").forEach((inp) => {
+    inp.addEventListener("input", () => {
+      let v = inp.value;
+      if (inp.hasAttribute("data-num")) v = v === "" ? null : Number(v);
+      setPath(cfg(), inp.dataset.k, v);
+      if (inp.dataset.k === "name") renderPanelList();
+      if (inp.hasAttribute("data-structural") || inp.dataset.k === "phases") {
+        if (inp.dataset.k === "spaces") {
+          const n = Number(v);
+          if (!(n >= 2 && n <= 84 && n % 2 === 0)) { changed(); return; }
+          cfg().breakers = cfg().breakers.filter((b) => b.space <= n);
+        }
+        renderSlots();
+      }
+      changed();
+    });
+  });
+  $("#notes").addEventListener("input", (e) => {
+    cfg().notes = e.target.value.split("\n").map((s) => s.trim()).filter(Boolean);
+    changed();
+  });
+}
+
+function fillFields() {
+  document.querySelectorAll("[data-k]").forEach((inp) => {
+    const v = getPath(cfg(), inp.dataset.k);
+    inp.value = v == null ? "" : v;
+    if (inp.tagName === "SELECT" && inp.selectedIndex < 0) inp.selectedIndex = 0;
+  });
+  $("#notes").value = (cfg().notes || []).join("\n");
+}
+
+// ----------------------------------------------------------- slot editor
+function poleRow(pole, tag, onChange) {
+  const amps = el("input", { class: "amps", type: "number", min: 0, step: 5, list: "ampList", placeholder: "A", value: pole.amps ?? "" });
+  amps.addEventListener("input", () => { pole.amps = amps.value === "" ? null : Number(amps.value); onChange(); });
+  const feat = el("select", { class: "feat", title: "Breaker type" },
+    ...FEATURE_OPTIONS.map(([v, t]) => el("option", { value: v, selected: (pole.feature || "") === v }, t)));
+  feat.addEventListener("change", () => { pole.feature = feat.value; onChange(); });
+  const label = el("input", { class: "label", placeholder: "Circuit description", value: pole.label || "" });
+  label.addEventListener("input", () => { pole.label = label.value; onChange(); });
+  return el("div", { class: "pole" },
+    el("div", { class: "row" }, tag ? el("span", { class: "tag" }, tag) : null, amps, el("span", { class: "unit" }, "A"), feat),
+    el("div", { class: "row" }, label));
+}
+
+function setKind(space, kind) {
+  const c = cfg();
+  const old = c.breakers.find((b) => b.space === space);
+  const keep = old ? (old.kind === "tandem" || old.kind === "quad" ? old.a || {} : old) : {};
+  c.breakers = c.breakers.filter((b) => b.space !== space);
+  if (kind !== "blank") {
+    const s = slotOf(space);
+    if (s.row + SPAN[kind] > rows()) {
+      alert(`A ${KIND_LABEL[kind]} breaker at space ${space} would run past the bottom of the panel.`);
+      if (old) c.breakers.push(old);
+      renderSlots();
+      return;
+    }
+    const nb = { space, kind };
+    if (kind === "tandem" || kind === "quad") {
+      nb.a = { amps: keep.amps ?? null, label: keep.label || "", feature: keep.feature || "" };
+      nb.b = { amps: null, label: "", feature: "" };
+    } else {
+      Object.assign(nb, { amps: keep.amps ?? null, label: keep.label || "", feature: keep.feature || "" });
+    }
+    const claimed = new Set(spacesOf(nb));
+    c.breakers = c.breakers.filter((b) => !spacesOf(b).some((sp) => claimed.has(sp)));
+    c.breakers.push(nb);
+  }
+  c.breakers.sort((a, b) => a.space - b.space);
+  renderSlots();
+  changed();
+}
+
+function renderSlots() {
+  const c = cfg();
+  const box = $("#slots");
+  box.replaceChildren();
+  const occ = occupancy();
+  box.style.gridTemplateRows = `auto repeat(${rows()}, minmax(44px, auto))`;
+  box.append(el("div", { class: "col-title", style: "grid-column:1;grid-row:1" }, "Left column"));
+  box.append(el("div", { class: "col-title", style: "grid-column:2;grid-row:1" }, "Right column"));
+  for (let col = 0; col < 2; col++) {
+    for (let row = 0; row < rows(); row++) {
+      const sp = spaceAt(col, row);
+      const b = occ[sp];
+      if (b && b.space !== sp) continue; // covered by a multi-space breaker
+      const kind = b ? b.kind : "blank";
+      const span = SPAN[kind];
+      const phases = Array.from({ length: span }, (_, i) => phaseOf(row + i)).join("");
+      const nums = Array.from({ length: span }, (_, i) => spaceAt(col, row + i)).join("/");
+
+      const kindSel = el("select", { class: "kind" },
+        ...Object.entries(KIND_LABEL).map(([k, t]) => el("option", { value: k, selected: k === kind }, t)));
+      kindSel.addEventListener("change", () => setKind(sp, kindSel.value));
+      const head = el("div", { class: "row" }, kindSel);
+
+      const body = el("div", { class: "body" }, head);
+      if (kind === "single") {
+        const below = row + 1 < rows() ? occ[spaceAt(col, row + 1)] : null;
+        if (below && below.kind === "single" && below.space === spaceAt(col, row + 1)) {
+          const cb = el("input", { type: "checkbox", checked: !!b.tie_below });
+          cb.addEventListener("change", () => { b.tie_below = cb.checked; changed(); });
+          head.append(el("label", { class: "tie", title: "Handle tie to the 1-pole breaker below (e.g. multi-wire branch circuit)" }, cb, "tie ↓"));
+        } else if (b.tie_below) { b.tie_below = false; }
+        body.append(poleRow(b, null, changed));
+      } else if (kind === "double" || kind === "triple") {
+        body.append(poleRow(b, null, changed));
+      } else if (kind === "tandem") {
+        body.append(poleRow(b.a, `${sp}A`, changed), poleRow(b.b, `${sp}B`, changed));
+      } else if (kind === "quad") {
+        body.append(poleRow(b.a, "Outer", changed), poleRow(b.b, "Inner", changed));
+      }
+
+      const card = el("div", {
+        class: `slot ${kind === "blank" ? "blank" : ""} span-${span}`,
+        style: `grid-column:${col + 1};grid-row:${row + 2} / span ${span}`,
+      }, el("div", { class: "num" }, nums, el("span", { class: "phase" }, phases)), body);
+      box.append(card);
+    }
+  }
+  updateUsage();
+}
+
+function updateUsage() {
+  const used = cfg().breakers.reduce((n, b) => n + SPAN[b.kind], 0);
+  $("#usage").textContent = `${used} of ${cfg().spaces} spaces used · ${cfg().spaces - used} open`;
+}
+
+// ---------------------------------------------------------- panel list
+function renderPanelList() {
+  const sel = $("#panelSelect");
+  sel.replaceChildren(...store.panels.map((p, i) => el("option", { value: i, selected: i === store.cur }, p.name || `Panel ${i + 1}`)));
+}
+function switchTo(i) {
+  store.cur = Math.max(0, Math.min(i, store.panels.length - 1));
+  renderAll();
+}
+function renderAll() {
+  renderPanelList();
+  fillFields();
+  renderSlots();
+  changed();
+}
+
+// --------------------------------------------------------------- preview
+let timer = null;
+function changed() {
+  save();
+  updateUsage();
+  $("#sheet").classList.add("stale");
+  $("#status").textContent = "Updating…";
+  clearTimeout(timer);
+  timer = setTimeout(refresh, 150);
+}
+
+function refresh() {
+  const msgs = $("#messages");
+  msgs.replaceChildren();
+  let res;
+  try {
+    res = buildSheet(cfg());
+  } catch (e) {
+    if (!(e instanceof PanelError)) throw e;
+    e.errors.forEach((m) => msgs.append(el("div", { class: "err" }, m)));
+    $("#status").textContent = "Fix errors to update the drawing";
+    return null;
+  }
+  res.panel.warnings.forEach((w) => msgs.append(el("div", { class: "warn" }, w)));
+  $("#sheet").innerHTML = sheetToSvg(res.sheet);
+  $("#sheet").classList.remove("stale");
+  const s = res.stats;
+  $("#status").textContent = `${s.circuits} circuits · ${s.used}/${s.spaces} spaces used`;
+  return res;
+}
+
+// ------------------------------------------------------------------ zoom
+let zoom = 1;
+function applyZoom() {
+  const wrap = $("#sheetWrap");
+  const w = wrap.clientWidth - 36, h = wrap.clientHeight - 36;
+  const fit = Math.max(200, Math.min(w, h * 11 / 17));
+  $("#sheet").style.width = `${fit * zoom}px`;
+}
+$("#zoomIn").onclick = () => { zoom = Math.min(zoom * 1.4, 6); applyZoom(); };
+$("#zoomOut").onclick = () => { zoom = Math.max(zoom / 1.4, 0.4); applyZoom(); };
+$("#zoomFit").onclick = () => { zoom = 1; applyZoom(); };
+window.addEventListener("resize", applyZoom);
+
+// -------------------------------------------------------------- actions
+function fileName(ext) {
+  return `${(cfg().name || "panel").replace(/[^A-Za-z0-9_-]+/g, "_")}.${ext}`;
+}
+function downloadBlob(blob, name) {
+  const a = el("a", { href: URL.createObjectURL(blob), download: name });
+  document.body.append(a);
+  a.click();
+  setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+}
+function currentSheet() {
+  clearTimeout(timer);
+  const res = refresh();
+  if (!res) alert("Fix the errors shown above the preview first.");
+  return res;
+}
+
+$("#btnDxf").onclick = () => {
+  const res = currentSheet();
+  if (!res) return;
+  downloadBlob(new Blob([sheetToDxf(res.sheet)], { type: "application/dxf" }), fileName("dxf"));
+  $("#status").textContent = `Downloaded ${fileName("dxf")}`;
+};
+$("#btnPdf").onclick = () => {
+  const res = currentSheet();
+  if (!res) return;
+  $("#printSheet").innerHTML = sheetToSvg(res.sheet, { width: "11in", height: "17in" });
+  const prev = document.title;
+  document.title = fileName("pdf").replace(/\.pdf$/, ""); // default PDF file name
+  window.print();
+  document.title = prev;
+};
+$("#btnExportJson").onclick = () =>
+  downloadBlob(new Blob([JSON.stringify(cfg(), null, 2)], { type: "application/json" }), fileName("json"));
+$("#btnImport").onclick = () => $("#fileInput").click();
+$("#fileInput").onchange = async (e) => {
+  const f = e.target.files[0];
+  if (!f) return;
+  try {
+    const data = JSON.parse(await f.text());
+    const list = Array.isArray(data) ? data : [data];
+    for (const p of list) store.panels.push(Object.assign(blankPanel(), p));
+    switchTo(store.panels.length - 1);
+  } catch (err) { alert("Could not read file: " + err.message); }
+  e.target.value = "";
+};
+$("#panelSelect").onchange = (e) => switchTo(Number(e.target.value));
+$("#btnNew").onclick = () => { store.panels.push(blankPanel(`Panel ${store.panels.length + 1}`)); switchTo(store.panels.length - 1); };
+$("#btnDup").onclick = () => {
+  const c = JSON.parse(JSON.stringify(cfg()));
+  c.name += " (copy)";
+  store.panels.push(c);
+  switchTo(store.panels.length - 1);
+};
+$("#btnDel").onclick = () => {
+  if (!confirm(`Delete "${cfg().name}"?`)) return;
+  store.panels.splice(store.cur, 1);
+  if (!store.panels.length) store.panels.push(blankPanel());
+  switchTo(store.cur);
+};
+
+// ---------------------------------------------------------------- start
+(function init() {
+  bindFields();
+  load();
+  if (!store.panels.length) store.panels.push(JSON.parse($("#example-panel").textContent));
+  applyZoom();
+  renderAll();
+})();
+
+window.PanelDrafter = { buildSheet, sheetToSvg, sheetToDxf, PanelError }; // used by tools/check_html.py
+</script>
+</body>
+</html>
