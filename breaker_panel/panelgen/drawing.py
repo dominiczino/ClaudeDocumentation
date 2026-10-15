@@ -431,79 +431,37 @@ def draw_title_block(sh: Sheet, p: Panel):
             x += w
 
 
-LEGEND_ITEMS = [
-    ("single", "1-POLE"),
-    ("double", "2-POLE"),
-    ("triple", "3-POLE"),
-    ("tie", "HANDLE-TIED 1-POLES"),
-    ("tandem", "TANDEM (TWIN)"),
-    ("quad", "QUADPLEX"),
-    ("blank", "OPEN SPACE / FILLER"),
-    ("feature", "GFCI/AFCI/SPD TEST"),
-]
+def draw_notes(sh: Sheet, p: Panel) -> float:
+    """Notes block beside the title block. Returns the y of its top edge.
 
-
-def draw_legend(sh: Sheet, p: Panel):
-    x0, y0 = IX0, IY0
-    x1, y1 = IX1 - TB_W, IY0 + TB_H
-    sh.rect(x0, y0, x1, y1, "TITLE")
-    sh.text("LEGEND", x0 + 0.08, y1 - 0.08, 0.085, A.TOP_LEFT, "TEXT", STYLE_BOLD)
-    used = {b.kind for b in p.breakers}
-    if any(b.tie_below for b in p.breakers):
-        used.add("tie")
-    if any(pl.feature for b in p.breakers for pl in (b.main, b.a, b.b)):
-        used.add("feature")
-    if p.stats()["free"]:
-        used.add("blank")
-    items = [it for it in LEGEND_ITEMS if it[0] in used] or LEGEND_ITEMS[:1]
-    slot_w = (x1 - x0 - 0.1) / max(len(items), 4)
-    rh = 0.30
-    bw = min(0.80, slot_w - 0.14)
-    y_cap = y0 + 0.24
-    y_top_area = y1 - 0.18
-    max_span = max({"double": 2, "triple": 3, "quad": 2, "tie": 2}.get(k, 1) for k, _ in items)
-    rh = min(rh, (y_top_area - y_cap) / max_span)
-    demo = Breaker(space=1, kind="single", main=Pole(amps=20))
-    for i, (kind, cap) in enumerate(items):
-        xc = x0 + 0.05 + slot_w * (i + 0.5)
-        span = {"double": 2, "triple": 3, "quad": 2, "tie": 2}.get(kind, 1)
-        ymid = y_top_area - max_span * rh / 2 - 0.02
-        ytop = ymid + span * rh / 2
-        g = BodyGeom(x_in=xc - bw / 2, out=+1, y_top=ytop, row_h=rh, width=bw)
-        if kind == "tie":
-            draw_pole_set(sh, g, 1, "single", demo)
-            draw_pole_set(sh, BodyGeom(g.x_in, 1, ytop - rh, rh, bw), 1, "single", demo)
-            draw_handle_tie(sh, g)
-        elif kind == "feature":
-            draw_pole_set(sh, g, 1, "single", Breaker(1, "single", main=Pole(amps=20, feature="GFCI")))
-        else:
-            br = Breaker(1, kind, main=Pole(amps=20 if kind == "single" else 30),
-                         a=Pole(amps=30 if kind == "quad" else 15), b=Pole(amps=20 if kind == "quad" else 15))
-            draw_pole_set(sh, g, span, kind, br)
-        icon_bot = ymid - max_span * rh / 2
-        sh.text_box(cap, xc - slot_w / 2, icon_bot - 0.25, xc + slot_w / 2, icon_bot - 0.03, 0.065, 0.05,
-                    align="center", max_lines=2, pad=0.02)
-
-
-def draw_notes(sh: Sheet, p: Panel, y_bottom: float) -> float:
-    """Notes box above legend/title block. Returns its top y."""
-    if not p.notes:
-        return y_bottom
-    w = IX1 - IX0
-    h_txt = 0.095
+    Text shrinks to fit the title-block height; if the notes still don't fit
+    at the minimum size, the block grows upward (taking space from the body).
+    """
+    x0, x1 = IX0, IX1 - TB_W
+    y0 = IY0
+    head = 0.28
     num_w = 0.25
-    blocks = [sh.wrap(n, w - num_w - 0.2, h_txt) for n in p.notes]
-    n_lines = sum(len(b) for b in blocks)
-    box_h = 0.28 + n_lines * h_txt * LINE_SPACING + 0.08
-    y0, y1 = y_bottom, y_bottom + box_h
-    sh.rect(IX0, y0, IX1, y1, "TITLE")
-    sh.text("NOTES", IX0 + 0.08, y1 - 0.08, 0.085, A.TOP_LEFT, "TEXT", STYLE_BOLD)
-    y = y1 - 0.28 - h_txt / 2
+    w = (x1 - x0) - num_w - 0.2
+    h_max, h_min = 0.095, 0.07
+
+    def layout(h):
+        blocks = [sh.wrap(n, w, h) for n in p.notes]
+        return blocks, head + sum(len(b) for b in blocks) * h * LINE_SPACING + 0.08
+
+    h = h_max
+    blocks, need = layout(h)
+    while need > TB_H and h > h_min + 1e-9:
+        h = max(h_min, h - 0.005)
+        blocks, need = layout(h)
+    y1 = y0 + max(TB_H, need)
+    sh.rect(x0, y0, x1, y1, "TITLE")
+    sh.text("NOTES", x0 + 0.08, y1 - 0.08, 0.085, A.TOP_LEFT, "TEXT", STYLE_BOLD)
+    y = y1 - head - h / 2
     for i, blk in enumerate(blocks):
-        sh.text(f"{i + 1}.", IX0 + 0.1, y, h_txt, A.MIDDLE_LEFT)
+        sh.text(f"{i + 1}.", x0 + 0.1, y, h, A.MIDDLE_LEFT)
         for ln in blk:
-            sh.text(ln, IX0 + 0.1 + num_w, y, h_txt, A.MIDDLE_LEFT)
-            y -= h_txt * LINE_SPACING
+            sh.text(ln, x0 + 0.1 + num_w, y, h, A.MIDDLE_LEFT)
+            y -= h * LINE_SPACING
     return y1
 
 
@@ -726,8 +684,7 @@ def build(p: Panel) -> ezdxf.document.Drawing:
     draw_border(sh)
     header_bottom = draw_header(sh, p, stats)
     draw_title_block(sh, p)
-    draw_legend(sh, p)
-    notes_top = draw_notes(sh, p, IY0 + TB_H)
+    notes_top = draw_notes(sh, p)
     body_top = header_bottom - 0.2
     body_bottom = notes_top + 0.2
     draw_panel(sh, p, body_top, body_bottom)

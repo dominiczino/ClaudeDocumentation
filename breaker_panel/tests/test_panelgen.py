@@ -72,3 +72,11 @@ def test_variants_build(cfg):
     doc = build(Panel.from_dict(cfg))
     _roundtrip(doc)
     assert to_svg(doc).startswith("<?xml") or "<svg" in to_svg(doc)[:500]
+
+
+def test_notes_block_beside_title_block():
+    from panelgen.drawing import IY0, TB_H, Sheet, draw_notes
+    few = Panel.from_dict({"spaces": 12, "notes": ["one", "two"]})
+    assert draw_notes(Sheet(), few) == pytest.approx(IY0 + TB_H)
+    many = Panel.from_dict({"spaces": 12, "notes": ["long note " * 20] * 6})
+    assert draw_notes(Sheet(), many) > IY0 + TB_H

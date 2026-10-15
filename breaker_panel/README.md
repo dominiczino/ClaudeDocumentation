@@ -21,7 +21,8 @@ python app.py            # http://127.0.0.1:5000   (--host 0.0.0.0 to reach it f
 * **Breakers**: the editor is laid out like the panel itself. Set each space's type, and a 2-pole,
   3-pole or quad takes the spaces below it. A **tie ↓** checkbox shows up on a 1-pole breaker when
   the breaker below it is also a 1-pole (e.g. a multi-wire branch circuit).
-* **Notes / Title block**: notes print above the legend. The title block holds project, drawn by,
+* **Notes / Title block**: notes print in the block left of the title block (text shrinks to fit,
+  and the block grows upward only if there are a lot of notes). The title block holds project, drawn by,
   date, dwg no., rev and sheet.
 * Several panels are kept in the browser (localStorage). Use **Save JSON / Import JSON** for real
   backups and for moving configs between machines.
