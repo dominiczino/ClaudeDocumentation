@@ -19,7 +19,7 @@ function sheetToPxSvg(sh, H, { strokeScale = 1 } = {}) {
     if (e.t === "line") add(e.owner, `<line x1="${f(e.x0)}" y1="${Y(e.y0)}" x2="${f(e.x1)}" y2="${Y(e.y1)}" ${stroke(e.layer)}/>`);
     else if (e.t === "circle") add(e.owner, `<circle cx="${f(e.x)}" cy="${Y(e.y)}" r="${f(e.r)}" fill="#fff" ${stroke(e.layer)}/>`);
     else if (e.t === "poly") add(e.owner, `<path d="${svgPathD(e.pts, e.closed, Y)}" fill="${e.closed && e.layer === "CONTROL" ? "#fff" : "none"}" ${stroke(e.layer)}/>`);
-    else if (e.t === "fill") add(e.owner, `<path d="${svgPathD(e.pts, true, Y)}" fill="${col(e.layer)}" stroke="none"/>`);
+    else if (e.t === "fill") add(e.owner, `<path d="${svgPathD(e.pts, true, Y)}" fill="${col(e.layer)}"${e.layer === "OBSTACLE-FILL" ? ' fill-opacity="0.45"' : ""} stroke="none"/>`);
     else if (e.t === "text") {
       const [v, hz] = e.align;
       const base = v === "M" ? e.y - e.h / 2 : v === "T" ? e.y - e.h : e.y;
@@ -39,6 +39,10 @@ const MAP = {
   onPick: null,        // (worldXY, ownerId) => void
   find: null,          // {target: [E, N], setups: [option...]}
   selected: null,
+  geo: null,           // georeference (06-geo) for the imagery
+  edit: null,          // {pts: [[E, N] | null (vertex on a point)...], closed} obstacle being drawn
+  banner: "",          // instruction shown while picking on the map
+  onVertexDrag: null,  // (index, worldXY, done) => void
 };
 
 function mapSize() {
@@ -46,8 +50,8 @@ function mapSize() {
   return [Math.max(200, r.width), Math.max(200, r.height)];
 }
 
-function mapFit(sol) {
-  const ext = siteExtents(sol);
+function mapFit(sol, p = APP.p) {
+  const ext = siteExtents(sol, p);
   const [W, H] = mapSize();
   if (!ext) { MAP.view = { cx: 5000, cy: 5000, ppu: 3 }; return; }
   const w = Math.max(R.w(ext), 10), h = Math.max(R.h(ext), 10);
@@ -61,7 +65,7 @@ const mapT = () => {
 }
 
 function renderMap(p, sol) {
-  if (!MAP.view) mapFit(sol);
+  if (!MAP.view) mapFit(sol, p);
   const { T, W, H } = mapT();
   const sh = new Sheet(FONTS[p.font] || FONTS[DEFAULT_FONT]);
   // ellipse exaggeration: largest 95 % ellipse drawn ~ 18 px
@@ -70,6 +74,17 @@ function renderMap(p, sol) {
   const exag = maxR > 0 ? Math.max(1, Math.round(18 / (maxR * MAP.view.ppu))) : 1;
   drawSite(sh, p, sol, T, { th: 9, sym: 15, sights: MAP.opts.sights, ellipses: MAP.opts.ellipses ? exag : 0,
                             letterEvery: 150, k: MAP.view.ppu, labels: MAP.opts.labels });
+  // imagery underlay (screen coordinates are y down)
+  let imagery = "";
+  const G = MAP.geo;
+  if (G && G.ok && p.geo.show) {
+    const { Ti } = mapT();
+    const toS = (w) => { const q = T(w); return [q[0], H - q[1]]; };
+    const tiles = imageryTiles(p, G, toS, (q) => Ti(q[0], H - q[1]), [0, 0, W, H], (G.u * G.s) / MAP.view.ppu);
+    const attr = p.geo.source === "custom" ? "" : IMAGERY[p.geo.source].attr;
+    imagery = `<g class="imagery" opacity="${p.geo.opacity}">${tilesSvg(tiles)}</g>` +
+      (attr ? `<text x="${W - 6}" y="${H - 6}" text-anchor="end" class="attr">${esc(attr)}</text>` : "");
+  }
   // find overlay
   const parts = [];
   if (MAP.find && MAP.find.target) {
@@ -83,6 +98,19 @@ function renderMap(p, sol) {
     parts.push(`<circle cx="${X[0]}" cy="${H - X[1]}" r="9" class="find-target"/>`,
                `<path d="M${X[0] - 14} ${H - X[1]}h28M${X[0]} ${H - X[1] - 14}v28" class="find-target"/>`);
   }
+  if (MAP.edit) {
+    const e = MAP.edit;
+    const scr = e.pts.map((w) => (w ? T(w) : null));
+    const on = scr.filter(Boolean);
+    if (on.length > 1) parts.push(`<path d="M${on.map((q) => `${q[0]} ${H - q[1]}`).join("L")}${e.closed ? "Z" : ""}" class="edit-outline"/>`);
+    scr.forEach((q, i) => {
+      if (!q) return;
+      parts.push(e.free[i] ? `<rect x="${q[0] - 5}" y="${H - q[1] - 5}" width="10" height="10" class="vtx" data-vtx="${i}"/>`
+                           : `<circle cx="${q[0]}" cy="${H - q[1]}" r="6" class="vtx-ref"/>`);
+    });
+  }
+  if (MAP.banner) parts.push(`<g class="banner"><rect x="10" y="10" width="${Math.min(W - 80, MAP.banner.length * 6.2 + 24)}" height="26" rx="5"/>` +
+                             `<text x="22" y="27">${esc(MAP.banner)}</text></g>`);
   if (MAP.selected && sol.coords.has(MAP.selected)) {
     const c = T(sol.coords.get(MAP.selected));
     parts.push(`<circle cx="${c[0]}" cy="${H - c[1]}" r="14" class="sel-ring"/>`);
@@ -94,7 +122,8 @@ function renderMap(p, sol) {
              `<rect x="16" y="${H - 26}" width="${bw}" height="6" fill="#333"/><text x="16" y="${H - 32}" font-size="11">${+unit.toFixed(2)} ${unitAbbr(p)}` +
              `${MAP.opts.ellipses && maxR > 0 ? ` · ellipses ×${exag}` : ""}</text></g>`);
   $("#mapSvg").setAttribute("viewBox", `0 0 ${W} ${H}`);
-  $("#mapSvg").innerHTML = `<rect width="${W}" height="${H}" fill="#fbfcfd"/>` + mapGrid(T, W, H) +
+  $("#mapSvg").classList.toggle("picking", !!MAP.banner);
+  $("#mapSvg").innerHTML = `<rect width="${W}" height="${H}" fill="#fbfcfd"/>` + imagery + mapGrid(T, W, H) +
     sheetToPxSvg(sh, H) + parts.join("");
   $("#mapSvg").setAttribute("font-family", sh.font.css.replace(/"/g, "'"));
 }
@@ -120,7 +149,8 @@ function bindMap(getState) {
   let drag = null;
   const local = (ev) => { const r = svg.getBoundingClientRect(); return [ev.clientX - r.left, r.height - (ev.clientY - r.top)]; };
   svg.addEventListener("pointerdown", (ev) => {
-    drag = { start: local(ev), view: { ...MAP.view }, moved: false, target: ev.target };
+    const vtx = ev.target.dataset ? ev.target.dataset.vtx : undefined;
+    drag = { start: local(ev), view: { ...MAP.view }, moved: false, target: ev.target, vtx: vtx === undefined ? null : +vtx };
     svg.setPointerCapture(ev.pointerId);
   });
   svg.addEventListener("pointermove", (ev) => {
@@ -129,6 +159,7 @@ function bindMap(getState) {
     const dx = x - drag.start[0], dy = y - drag.start[1];
     if (!drag.moved && Math.hypot(dx, dy) < 4) return;
     drag.moved = true;
+    if (drag.vtx !== null && MAP.onVertexDrag) { MAP.onVertexDrag(drag.vtx, mapT().Ti(x, y), false); return; }
     MAP.view = { ...drag.view, cx: drag.view.cx - dx / drag.view.ppu, cy: drag.view.cy - dy / drag.view.ppu };
     const { p, sol } = getState();
     renderMap(p, sol);
@@ -136,6 +167,7 @@ function bindMap(getState) {
   svg.addEventListener("pointerup", (ev) => {
     const d = drag;
     drag = null;
+    if (d && d.vtx !== null) { if (d.moved && MAP.onVertexDrag) MAP.onVertexDrag(d.vtx, mapT().Ti(...local(ev)), true); return; }
     if (!d || d.moved) return;
     const g = d.target.closest && d.target.closest("[data-owner]");
     const owner = g ? g.dataset.owner : null;

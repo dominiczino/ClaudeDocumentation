@@ -2,7 +2,8 @@
 <!--
   Site Survey Log: record transit sightings between landmarks and points of interest
   (buried utilities etc.), solve their positions by least squares, and find them again.
-  Self-contained: open this file in a browser. No server, no network access needed.
+  Self-contained: open this file in a browser. No server needed; the network is used only
+  for the optional satellite imagery.
   Built from src/ by tools/build.py; edit the sources, not this file.
 -->
 <html lang="en">
@@ -32,6 +33,7 @@
       <button id="btnExport">Export ▾</button>
       <div class="menu-list">
         <button id="btnCsv">Coordinates (CSV)</button>
+        <button id="btnKml">Google Earth (KML)</button>
         <button id="btnDxfPlan">Plan sheet (DXF, ANSI B)</button>
         <button id="btnDxfWorld">Site at 1:1 (DXF, real coordinates)</button>
       </div>
@@ -50,6 +52,7 @@
       <button data-tab="book">Field book</button>
       <button data-tab="points">Points</button>
       <button data-tab="lines">Lines</button>
+      <button data-tab="obstacles">Obstacles</button>
       <button data-tab="find">Find</button>
     </nav>
     <div class="pane" id="pane"></div>
@@ -61,6 +64,8 @@
       <label><input type="checkbox" id="optSights" checked> Sight lines</label>
       <label><input type="checkbox" id="optEll" checked> Uncertainty</label>
       <label><input type="checkbox" id="optLabels" checked> Labels</label>
+      <label id="imgTool"><input type="checkbox" id="optImg"> Imagery</label>
+      <input type="range" id="optImgOp" min="10" max="100" step="5" title="Imagery opacity">
       <button id="btnFit">Fit</button>
     </div>
     <svg id="mapSvg" xmlns="http://www.w3.org/2000/svg"></svg>

@@ -20,6 +20,7 @@ const LAYERS = {
   "UT-ELEC": [1, 50], "UT-GAS": [40, 50], "UT-COMM": [30, 50], "UT-WATER": [5, 50],
   "UT-SEWER": [3, 50], "UT-STORM": [94, 50], "UT-IRRIG": [6, 50], "UT-OTHER": [7, 50],
   "FEATURE": [7, 35], "PROPERTY": [7, 50, true],
+  "OBSTACLE": [8, 35], "OBSTACLE-VEG": [3, 25, true], "OBSTACLE-LOW": [8, 18, true], "OBSTACLE-FILL": [254, 0],
 };
 // screen / print colours for the ACI numbers used above
 const ACI_RGB = { 1: "#d4111e", 3: "#178a35", 5: "#1c56c8", 6: "#8e24aa", 7: "#000000", 8: "#808080",

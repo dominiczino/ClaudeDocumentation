@@ -8,8 +8,10 @@ there, turn to this angle"** instructions for finding a buried line again years 
 
 ## Run
 
-Open **`site-survey.html`** in a browser. It works offline with no install. **Example** in the
-toolbar loads a five-landmark property with water, electric, septic and gas features.
+Open **`site-survey.html`** in a browser. It works offline with no install. Only the optional
+satellite imagery needs a connection. **Example** in the toolbar loads a five-landmark property with
+water, electric, septic and gas features, a house, a deck and a shed. Its latitudes/longitudes
+are made up, so the imagery behind it is just a park lawn.
 
 Projects are kept in the browser (localStorage). Use **Save JSON / Import** for backups. The JSON is
 the field book, so keep a copy with the house papers.
@@ -47,8 +49,9 @@ a unique solution. The tool goes further than that:
   invisible. A point is marked **checked** when the worst error that could go *undetected*
   (the 4.1 σ / √r minimal detectable blunder, propagated into that point's position) moves it no
   more than max(0.15 ft, 3 × its 95 % radius). In practice: three or more sightings from well-spread
-  directions. The badge tooltip gives the actual worst-case shift. In the example, W3 is deliberately
-  left unchecked: its three sight lines are too close to parallel.
+  directions. The badge tooltip gives the actual worst-case shift. In the example, the house hides
+  W3 and E3 from all but two landmarks, and W4 and DB have three sightings that are too poorly
+  spread, so these four are left unchecked.
 
 ## Workflow
 
@@ -65,12 +68,66 @@ a unique solution. The tool goes further than that:
 3. **Points / Lines.** Give points a type (APWA utility colours: electric red, gas yellow, comms
    orange, water blue, sewer green, storm, irrigation purple), depth and description. Lines connect
    points in order. Use them for a trench route.
-4. **Find.** Pick a point, a distance along a line ("12 ft along the water line from W2"),
-   typed coordinates, or click the map (for "I want to dig here, what's under it?"). The tool
-   picks the two setups whose sight lines cross most squarely, preferring stations that have
-   already sighted that point so the line of sight is known to be clear. It gives backsight, angle
-   to turn and distance along the line, the expected 95 % uncertainty where they cross, and taped
-   distances from nearby landmarks as an independent check. All other setups are listed too.
+4. **Obstacles.** Outline buildings, sheds, hedges and solid walls (see below).
+5. **Find.** Pick a point, a distance along a line ("12 ft along the water line from W2"),
+   typed coordinates, a latitude/longitude, or click the map (for "I want to dig here, what's under
+   it?"). The tool picks the two setups whose sight lines cross most squarely and are not blocked
+   by an obstacle, preferring stations that have already sighted that point so the line of sight is
+   known to be clear. It gives backsight, angle to turn and distance along the line, the expected
+   95 % uncertainty where they cross, and taped distances from nearby landmarks as an independent
+   check. All other setups are listed too, with any that are blocked and by what.
+
+## Satellite imagery (georeference)
+
+Give some landmarks a latitude/longitude and the map gets a semi-transparent satellite underlay.
+The opacity slider is in the map toolbar.
+
+* **Where the lat/lon comes from.** You can stand on the mark with a phone GPS app, or paste
+  `lat, lon` copied from a map app into the latitude box (it splits itself). Once imagery shows,
+  **Pick** puts a mark you can see in the image (a slab corner, a fence corner post) by clicking it.
+  Each entry has a source: phone/handheld ±3 m, picked on imagery ±0.6 m, or survey-grade GPS
+  ±5 cm. The source sets the entry's weight in the fit.
+* **The fit.** This is a weighted least-squares 2D fit of the surveyed landmark positions onto
+  the lat/lon. The lat/lon are first converted to a WGS 84 local tangent plane. The fit is
+  rigid (shift and rotation only), because your angles and tape are far more precise than any
+  phone GPS. If nothing has been taped yet, the scale is fitted too. The Project tab reports:
+  * the rotation as "grid north is x° west/east of true north", with its 95 % uncertainty;
+  * the RMS misfit;
+  * each landmark's misfit on its card.
+
+  A fix that disagrees by more than about 3.5σ, with three or more fixes, is flagged.
+* **One fix** pins the imagery with grid north taken as true north. **Two** fix the rotation
+  but can't check each other. **Three or more** give a check.
+* **Imagery.** Choose Esri World Imagery (worldwide), USGS orthoimagery (US only) or any
+  `{z}/{x}/{y}` tile server. Tiles are drawn through the fit, so they rotate with it. The tile
+  images are fetched by your browser. Check the provider's terms for anything beyond personal use.
+* **Uses.**
+  * The printed plan can include the imagery (Project tab), clipped to the map frame. DXF output
+    never includes it.
+  * The plan gets a true-north tick and a note giving the grid rotation.
+  * The report adds lat/lon to the landmarks table and to each find card, which is enough to walk
+    to the spot with a phone.
+  * The CSV gets latitude/longitude columns.
+  * **Export → Google Earth (KML)** writes landmarks, points, lines and obstacles.
+  * Find can take a lat/lon, for example from a utility locate ticket.
+
+## Obstacles
+
+On the **Obstacles** tab, add a building, shed/garage/deck, trees/hedge, wall/solid fence, or
+other. Click **Draw**, then click its corners on the map, over the imagery if you have it.
+Clicking a landmark or point makes that corner follow its surveyed position. Drag the square
+handles to adjust, click a corner's coordinates to type them, and press Esc when done.
+
+* An obstacle that **blocks sight** rules out any Find setup whose line to the spot passes
+  through it. The line to that setup's backsight is checked too (another backsight is used if one
+  is clear). Tape ties are checked as well. Crossings within 0.25 ft (8 cm) of either end don't
+  count, so a mark on a wall or a deck post can still be used.
+* Untick "Blocks sight" for outlines you can see over, such as a patio or a low deck. They are
+  still drawn.
+* If a field-book sighting passes through a blocking obstacle, you get a note. Either the outline
+  is wrong or the building is newer than the sighting.
+* Obstacles are drawn on the map, plan, report figure and both DXFs (layers `OBSTACLE`,
+  `OBSTACLE-VEG`, `OBSTACLE-LOW`, `OBSTACLE-FILL`) and exported to KML.
 
 ## Outputs
 
@@ -85,14 +142,18 @@ a unique solution. The tool goes further than that:
   keep.
 * **DXF 1:1.** Real-world coordinates in feet or metres (`$INSUNITS` set), with landmarks, points,
   lines and labels on layers. It drops straight into CAD or GIS over a site plan.
-* **CSV.** PNEZD order (point, northing, easting, blank elevation, description), then kind, type, depth, ±95 % and check. Most CAD and data-collector software imports it directly.
+* **CSV.** PNEZD order (point, northing, easting, blank elevation, description), then kind, type,
+  depth, ±95 % and check, plus latitude/longitude when georeferenced. Most CAD and data-collector
+  software imports it directly.
+* **KML.** For Google Earth, when georeferenced.
 
 Example outputs are in [`examples/output/`](examples/output/):
 [plan PDF](examples/output/example_property_plan.pdf),
 [report PDF](examples/output/example_property_report.pdf),
 [plan DXF](examples/output/example_property_plan.dxf),
 [1:1 DXF](examples/output/example_property_1to1.dxf),
-[CSV](examples/output/example_property.csv).
+[CSV](examples/output/example_property.csv),
+[KML](examples/output/example_property.kml).
 
 ## Field tips
 
@@ -105,6 +166,9 @@ Example outputs are in [`examples/output/`](examples/output/):
 * Re-tape the scale baseline both directions. Its error scales the whole site.
 * Plumb on a cap or nail, not the side of a post. A 1" centering error at 50 ft is about 6'
   of angle.
+* For phone GPS fixes, let the position settle for a minute on each mark, and give fixes to
+  landmarks that are far apart. The rotation is only as good as the fix error divided by their
+  spacing.
 
 ## Development
 
@@ -116,16 +180,23 @@ python tools/build.py               # standard library only
 
 * `src/js/`: `00-util`, `01-fonts`, `02-sheet` (drawing entities), `03-angles` (parsing and formatting
   of DMS and bearings), `04-model` (project, observations), `05-solver` (approximations, least
-  squares, data snooping, reliability), `06-find`, `07-output` (SVG, DXF), `08-site` (plan sheet,
-  1:1 DXF, CSV), `09-map`, `10-report`, `11-ui`.
+  squares, data snooping, reliability), `06-find`, `06-geo` (lat/lon fit, imagery tiles, KML),
+  `06-obstacles` (sight-line blocking), `07-output` (SVG, DXF), `08-site` (plan sheet, 1:1 DXF,
+  CSV), `09-map`, `10-report`, `11-ui`.
 * `tools/make_dxf_template.py` (needs ezdxf) regenerates `src/dxf_template.json`.
 * `tools/make_example.py` builds `examples/example_property.json` from known true coordinates with
-  simulated reading noise. `--truth` prints the true coordinates.
+  simulated reading noise. It books only sight lines that clear the house and shed, and adds
+  phone-grade lat/lon at a known grid rotation. `--truth` prints the true coordinates and
+  georeference.
 * `tools/check.py` (needs playwright and ezdxf) loads the built page headless. It checks:
   * the example solves to within each point's 95 % radius of truth;
-  * the find instructions reproduce each point;
+  * the find instructions reproduce each point and never use a line through a building;
+  * the georeference recovers the true grid rotation, imagery tiles land within 0.05 px of where
+    the fit puts them, and GPS sets a sensible scale when nothing is taped. Tiles are served
+    locally, so the tile servers are never contacted;
+  * drawing and dragging an obstacle, and picking a landmark on the imagery, work in the UI;
   * an injected misread angle is flagged;
   * a degraded survey (no distance, a single sighting, a bad entry) gives the right advice;
-  * the DXF files pass ezdxf's audit with the correct units;
+  * the DXF files pass ezdxf's audit with the correct units, and the KML parses;
   * there are no JS errors.
 * `tools/render_examples.py` (needs playwright and poppler) writes `examples/output/`.

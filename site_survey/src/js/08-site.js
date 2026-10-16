@@ -14,6 +14,32 @@ function drawSite(sh, p, sol, T, o) {
   const font = sh.font;
   const XY = (id) => (sol.coords.has(id) ? T(sol.coords.get(id)) : null);
 
+  // obstacles, beneath everything else
+  for (const ob of p.obstacles || []) {
+    const pts = obstacleCoords(sol, ob).map(T);
+    if (pts.length < 2) continue;
+    const k = OBSTACLE_KINDS[ob.kind];
+    const closed = ob.closed && pts.length >= 3;
+    sh.owner = "obs:" + ob.id;
+    if (closed && k.fill) sh.fill(pts, "OBSTACLE-FILL");
+    sh.poly(pts, ob.blocks ? k.layer : "OBSTACLE-LOW", closed);
+    if (!ob.name || o.labels === false) continue;
+    const h = th * 0.85, w = textWidth(ob.name, h, false, font);
+    let c;
+    if (closed) {
+      const bb = pts.reduce((b, q) => R.union(b, [q[0], q[1], q[0], q[1]]), null);
+      if (R.w(bb) < w * 1.15 || R.h(bb) < h * 2) continue;
+      c = [pts.reduce((a, q) => a + q[0], 0) / pts.length, pts.reduce((a, q) => a + q[1], 0) / pts.length];
+      if (!pointInPoly(c, pts)) continue;
+    } else {
+      let li = 1;
+      for (let i = 1; i < pts.length; i++) if (Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]) > Math.hypot(pts[li][0] - pts[li - 1][0], pts[li][1] - pts[li - 1][1])) li = i;
+      c = [(pts[li][0] + pts[li - 1][0]) / 2, (pts[li][1] + pts[li - 1][1]) / 2 + h];
+    }
+    sh.text(ob.name, c[0], c[1], h, "MC", "TEXT-MINOR");
+    placed.push([c[0] - w / 2, c[1] - h / 2, c[0] + w / 2, c[1] + h / 2]);
+  }
+
   // sight lines
   if (o.sights) {
     const seen = new Set();
@@ -124,10 +150,11 @@ function drawSite(sh, p, sol, T, o) {
   sh.owner = "sheet";
 }
 
-/** Extents of located points (world), or null. */
-function siteExtents(sol) {
+/** Extents of located points and obstacle outlines (world), or null. */
+function siteExtents(sol, p = null) {
   let b = null;
   for (const [, c] of sol.coords) b = R.union(b, [c[0], c[1], c[0], c[1]]);
+  for (const o of p ? p.obstacles : []) for (const c of obstacleCoords(sol, o)) b = R.union(b, [c[0], c[1], c[0], c[1]]);
   return b;
 }
 
@@ -192,7 +219,12 @@ function drawTitleBlock(sh, p, scaleStr) {
 }
 
 /** Notes printed on the plan: the datum and precision basis, then the user's notes. */
-function planNotes(p, sol) {
+/** "3°58'12\" west of true north" for a grid-north azimuth theta. */
+function gridNorthText(theta) {
+  return `${fmtDMS(Math.abs(theta)).replace(/^0+(?=\d)/, "")} ${theta < 0 ? "west" : "east"} of true north`;
+}
+
+function planNotes(p, sol, G = null) {
   const ents = entities(p);
   const nm = (id) => ents.get(id)?.name || "?";
   const u = unitAbbr(p);
@@ -203,6 +235,7 @@ function planNotes(p, sol) {
       `angle reading precision ${p.angleSigma}". ± values are 95% radii (${u}).`,
   ];
   if (sol.unscaled) auto.push("NO MEASURED DISTANCE: drawing is to an arbitrary scale.");
+  if (G && G.ok && !G.single) auto.push(`Grid north is ${gridNorthText(G.theta)} (fit to latitude/longitude of ${G.n} landmarks, ±${fmtDMS(2 * G.sigTheta).replace(/^0°/, "")}).`);
   return [...auto, ...p.notes.filter((n) => n.trim())];
 }
 
@@ -266,7 +299,7 @@ function chooseScale(p, ext, w, h) {
 function renderPlan(p, sol, opts = {}) {
   const sh = new Sheet(FONTS[p.font] || FONTS[DEFAULT_FONT]);
   drawBorder(sh);
-  const ext = siteExtents(sol) || [0, 0, 1, 1];
+  const ext = siteExtents(sol, p) || [0, 0, 1, 1];
   const mx0 = IX0 + 0.2, my0 = IY0 + 0.2, mx1 = IX1 - TB_W - 0.25, my1 = IY1 - 0.2;
   const margin = 0.6;
   const scale = chooseScale(p, ext, mx1 - mx0 - 2 * margin, my1 - my0 - 2 * margin);
@@ -313,6 +346,14 @@ function renderPlan(p, sol, opts = {}) {
   sh.poly([[nx, ny + 0.36], [nx + 0.1, ny - 0.18], [nx, ny - 0.08]], "NORTH", true);
   sh.text("N", nx, ny + 0.46, 0.13, "BC", "TEXT", true);
   sh.text("GRID", nx, ny - 0.36, 0.055, "TC", "TEXT-MINOR");
+  const G = opts.geo;
+  if (G && G.ok && !G.single) {
+    // true north: a thin line at azimuth -theta from the arrow's centre
+    const a = -G.theta, L = 0.5;
+    const ex = nx + L * Math.sin(a), ey = ny + L * Math.cos(a);
+    sh.line(nx + 0.3 * Math.sin(a), ny + 0.3 * Math.cos(a), ex, ey, "NORTH");
+    sh.text("TN", ex + 0.06 * Math.sign(Math.sin(a) || 1), ey + 0.02, 0.06, Math.sin(a) < 0 ? "BR" : "BL", "TEXT-MINOR");
+  }
   const barUnit = niceStep(upi * 0.75);   // one block ~0.75 in
   const bw = barUnit / upi, bx = mx0 + 0.35, by = my0 + 0.45;
   for (let i = 0; i < 4; i++) {
@@ -327,7 +368,7 @@ function renderPlan(p, sol, opts = {}) {
 
   // right column: notes above the title block, tables above them
   const cx0 = IX1 - TB_W, cx1 = IX1;
-  const notesTop = notesBlock(sh, planNotes(p, sol), cx0, cx1, IY0 + TB_H);
+  const notesTop = notesBlock(sh, planNotes(p, sol, opts.geo), cx0, cx1, IY0 + TB_H);
   const lmRows = p.landmarks.filter((l) => sol.coords.has(l.id)).map((l) => {
     const c = sol.coords.get(l.id);
     return [l.name, c[1].toFixed(2), c[0].toFixed(2), l.desc];
@@ -343,13 +384,29 @@ function renderPlan(p, sol, opts = {}) {
   table(sh, cx0 + 0.1, cx1 - 0.1, y - 0.2, notesTop + 0.1, "POINTS",
     [{ name: "NAME", w: 0.13 }, { name: "TYPE", w: 0.2 }, { name: "NORTHING", w: 0.17, align: "right" },
      { name: "EASTING", w: 0.17, align: "right" }, { name: "±95%", w: 0.11, align: "right" }, { name: "DEPTH", w: 0.22 }], ptRows);
-  return { sheet: sh, scale, upi, T };
+  return { sheet: sh, scale, upi, T, Ti, frame: [mx0, my0, mx1, my1] };
+}
+
+/**
+ * Imagery for the printed plan: tiles at ~200 dpi clipped to the map frame,
+ * as SVG to place right after the sheet's white background.
+ */
+function planImagery(p, G, plan) {
+  if (!G || !G.ok) return { svg: "", tiles: [] };
+  const [x0, y0, x1, y1] = plan.frame;
+  const toS = (w) => { const q = plan.T(w); return [q[0], SHEET_H - q[1]]; };
+  const tiles = imageryTiles(p, G, toS, (q) => plan.Ti(q[0], SHEET_H - q[1]), [x0, SHEET_H - y1, x1, SHEET_H - y0], (plan.upi * G.u * G.s) / 200, 150);
+  const attr = p.geo.source === "custom" ? "" : IMAGERY[p.geo.source].attr;
+  const svg = `<defs><clipPath id="mapclip"><rect x="${x0}" y="${SHEET_H - y1}" width="${x1 - x0}" height="${y1 - y0}"/></clipPath></defs>` +
+    `<g clip-path="url(#mapclip)"><g opacity="${p.geo.opacity}">${tilesSvg(tiles)}</g>` +
+    (attr ? `<text x="${x1 - 0.06}" y="${SHEET_H - y0 - 0.06}" text-anchor="end" font-size="0.075" fill="#fff" stroke="#000" stroke-width="0.012" paint-order="stroke">${esc(attr)}</text>` : "") + `</g>`;
+  return { svg, tiles };
 }
 
 // --------------------------------------------------------- 1:1 DXF and CSV
 /** Site in world units (1:1), text sized for plotting at the plan scale. */
 function renderSiteWorld(p, sol) {
-  const ext = siteExtents(sol) || [0, 0, 1, 1];
+  const ext = siteExtents(sol, p) || [0, 0, 1, 1];
   const scale = chooseScale(p, ext, IX1 - TB_W - IX0 - 2.2, IY1 - IY0 - 2.2);
   const upi = unitsPerInch(p, scale);
   const sh = new Sheet(FONTS[p.font] || FONTS[DEFAULT_FONT]);
@@ -364,16 +421,18 @@ function worldDxf(p, sol) {
 }
 
 /** PNEZD-style CSV: point, northing, easting, (blank elevation), description. */
-function coordinatesCsv(p, sol) {
+function coordinatesCsv(p, sol, G = null) {
   const q = (s) => `"${String(s ?? "").replace(/"/g, '""')}"`;
-  const rows = [["Point", "Northing", "Easting", "Elevation", "Description", "Kind", "Type", "Depth", "Plus/minus 95%", "Checked"]];
+  const geo = G && G.ok;
+  const rows = [["Point", "Northing", "Easting", "Elevation", "Description", "Kind", "Type", "Depth", "Plus/minus 95%", "Checked",
+                 ...(geo ? ["Latitude", "Longitude"] : [])]];
   for (const [id, ent] of entities(p)) {
     const c = sol.coords.get(id);
     if (!c) continue;
     const inf = sol.info.get(id);
     rows.push([ent.name, c[1].toFixed(3), c[0].toFixed(3), "", ent.desc, ent.kind === "lm" ? "landmark" : "point",
                ent.kind === "pt" ? (TYPES[ent.type] || TYPES[""]).name : "control", ent.depth || "", inf ? inf.r95.toFixed(3) : "",
-               inf && inf.checked ? "yes" : "no"]);
+               inf && inf.checked ? "yes" : "no", ...(geo ? localToLL(G, c).map((v) => v.toFixed(8)) : [])]);
   }
-  return rows.map((r) => r.map((v, i) => (i === 1 || i === 2 ? v : q(v))).join(",")).join("\r\n");
+  return rows.map((r) => r.map((v, i) => (i === 1 || i === 2 || (i > 9 && r !== rows[0]) ? v : q(v))).join(",")).join("\r\n");
 }

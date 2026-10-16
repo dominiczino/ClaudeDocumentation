@@ -44,7 +44,7 @@ function sheetToSvgContent(sh, { minStroke = 0 } = {}) {
     } else if (e.t === "poly") {
       add(e.owner, `<path d="${svgPathD(e.pts, e.closed, Y)}" fill="none" ${stroke(e.layer)}/>`);
     } else if (e.t === "fill") {
-      add(e.owner, `<path d="${svgPathD(e.pts, true, Y)}" fill="${col}" stroke="none"/>`);
+      add(e.owner, `<path d="${svgPathD(e.pts, true, Y)}" fill="${col}"${e.layer === "OBSTACLE-FILL" ? ' fill-opacity="0.6"' : ""} stroke="none"/>`);
     } else if (e.t === "text") {
       const [v, hz] = e.align;
       const base = v === "M" ? e.y - e.h / 2 : v === "T" ? e.y - e.h : e.y;

@@ -5,12 +5,14 @@
  *   name, location, surveyor, units: "ft"|"m", circle: "cw"|"ccw",
  *   angleSigma (arc-seconds, one reading), distSigma: {fixed, ratio},
  *   datum: {origin, originN, originE, orient, bearing},
- *   landmarks: [{id, name, desc}],
+ *   landmarks: [{id, name, desc, lat, lon, gsrc}],   lat/lon as typed; gsrc = GPS_SOURCES key
  *   points:    [{id, name, type, depth, desc}],
  *   setups:    [{id, date, station, backsight, bsReading, note,
  *                readings: [{id, target, reading, dist, note}]}],
  *   baselines: [{id, a, b, dist, note}],
  *   lines:     [{id, name, type, pts: [ids], depth, desc}],
+ *   obstacles: [{id, name, kind, closed, blocks, pts: [id | [E, N]], desc}],
+ *   geo:       {source, custom, opacity, show, print},   imagery settings
  *   titleblock, notes
  * }
  * ========================================================================= */
@@ -63,7 +65,8 @@ function normalizeProject(d) {
     angleSigma: clamp(Number(d.angleSigma) || 60, 0.5, 3600),
     distSigma: { fixed: Math.max(0, Number(d.distSigma?.fixed ?? 0.02)), ratio: Math.max(100, Number(d.distSigma?.ratio ?? 5000)) },
     datum: { origin: "", originN: 5000, originE: 5000, orient: "", bearing: "N 0 00 00 E", ...(d.datum || {}) },
-    landmarks: (d.landmarks || []).map((l) => ({ id: l.id || sid("L"), name: str(l.name), desc: str(l.desc) })),
+    landmarks: (d.landmarks || []).map((l) => ({ id: l.id || sid("L"), name: str(l.name), desc: str(l.desc),
+                                                 lat: str(l.lat), lon: str(l.lon), gsrc: l.gsrc in GPS_SOURCES ? l.gsrc : "phone" })),
     points: (d.points || []).map((x) => ({ id: x.id || sid("P"), name: str(x.name), type: x.type in TYPES ? x.type : "",
                                            depth: str(x.depth), desc: str(x.desc) })),
     setups: (d.setups || []).map((s) => ({
@@ -75,6 +78,15 @@ function normalizeProject(d) {
     baselines: (d.baselines || []).map((b) => ({ id: b.id || sid("B"), a: str(b.a), b: str(b.b), dist: str(b.dist), note: str(b.note), off: !!b.off })),
     lines: (d.lines || []).map((l) => ({ id: l.id || sid("F"), name: str(l.name), type: l.type in TYPES ? l.type : "",
                                          pts: (l.pts || []).map(str), depth: str(l.depth), desc: str(l.desc) })),
+    obstacles: (d.obstacles || []).map((o) => {
+      const kind = o.kind in OBSTACLE_KINDS ? o.kind : "building";
+      return { id: o.id || sid("O"), name: str(o.name), kind, desc: str(o.desc),
+               closed: o.closed === undefined ? OBSTACLE_KINDS[kind].closed : !!o.closed, blocks: o.blocks === undefined ? true : !!o.blocks,
+               pts: (o.pts || []).filter((v) => typeof v === "string" || (Array.isArray(v) && v.length === 2 && v.every(Number.isFinite)))
+                                 .map((v) => (typeof v === "string" ? v : [+v[0], +v[1]])) };
+    }),
+    geo: { source: d.geo?.source in IMAGERY ? d.geo.source : "esri", custom: str(d.geo?.custom),
+           opacity: clamp(Number(d.geo?.opacity ?? 0.6), 0.05, 1), show: d.geo?.show !== false, print: !!d.geo?.print },
     titleblock: Object.assign({ project: "", title: "", drawn_by: "", date: isoToday(), dwg_no: "", rev: "", sheet: "1 OF 1" },
                               d.titleblock || {}),
     notes: (d.notes || []).map(str),

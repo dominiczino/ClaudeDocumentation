@@ -28,42 +28,49 @@ function stationsThatSaw(sol, id) {
 
 /**
  * Setup options for locating target X = [E, N].
- * Returns {options, best: [opt, opt] | null, sigma95, tapes}.
- * option = {station, backsight, angle (clockwise), reading, dist, seen}
+ * Returns {options, best: [opt, opt] | [opt] | null, sigma95, tapes, inside}.
+ * option = {station, backsight, angle (clockwise), reading, dist, az, seen,
+ *           blocked: obstacle on the line to X, bsBlocked: obstacle on the line to the backsight}
+ * Setups whose lines pass through a blocking obstacle are never chosen.
  */
 function findOptions(p, sol, X, targetId = null) {
   const pairs = visiblePairs(p, sol);
   const seenBy = targetId ? stationsThatSaw(sol, targetId) : new Set();
+  const shapes = blockingShapes(p, sol), tol = sightTol(p);
   const options = [];
   for (const [s, bsMap] of pairs) {
     const S = sol.coords.get(s);
     const dist = Math.hypot(X[0] - S[0], X[1] - S[1]);
     if (dist < 1e-6) continue;
-    // backsight: the one used most often from this station
-    const [b] = [...bsMap.entries()].sort((a, c) => c[1] - a[1])[0];
+    // backsight: the one used most often from this station whose line is still clear
+    const cands = [...bsMap.entries()].sort((a, c) => c[1] - a[1]).map(([b]) => ({ b, blk: sightBlocker(shapes, S, sol.coords.get(b), tol) }));
+    const { b, blk } = cands.find((c) => !c.blk) || cands[0];
     const B = sol.coords.get(b);
     const angle = norm2pi(azimuth(S[0], S[1], X[0], X[1]) - azimuth(S[0], S[1], B[0], B[1]));
     const reading = p.circle === "cw" ? angle : norm2pi(-angle);
-    options.push({ station: s, backsight: b, angle, reading, dist, az: azimuth(S[0], S[1], X[0], X[1]), seen: seenBy.has(s) });
+    options.push({ station: s, backsight: b, angle, reading, dist, az: azimuth(S[0], S[1], X[0], X[1]), seen: seenBy.has(s),
+                   blocked: sightBlocker(shapes, S, X, tol), bsBlocked: blk });
   }
+  const clear = options.filter((o) => !o.blocked && !o.bsBlocked);
   // the pair of setups whose sight lines cross best (smallest predicted error)
   const sig = p.angleSigma * SEC * Math.SQRT2;
   let best = null;
-  for (let i = 0; i < options.length; i++) {
-    for (let j = i + 1; j < options.length; j++) {
-      const c = rayPairCov([options[i], options[j]], sig);
+  for (let i = 0; i < clear.length; i++) {
+    for (let j = i + 1; j < clear.length; j++) {
+      const c = rayPairCov([clear[i], clear[j]], sig);
       if (!c) continue;
       let score = Math.sqrt(c.trace);
-      if (targetId) score *= (options[i].seen ? 1 : 1.6) * (options[j].seen ? 1 : 1.6);
-      if (!best || score < best.score) best = { score, pair: [options[i], options[j]], c };
+      if (targetId) score *= (clear[i].seen ? 1 : 1.6) * (clear[j].seen ? 1 : 1.6);
+      if (!best || score < best.score) best = { score, pair: [clear[i], clear[j]], c };
     }
   }
-  options.sort((a, c) => (c.seen - a.seen) || a.dist - c.dist);
-  // tape ties from the nearest landmarks (best-crossing pair first)
+  if (!best && clear.length) best = { pair: [clear.sort((a, c) => a.dist - c.dist)[0]], c: null };
+  options.sort((a, c) => (!!a.blocked - !!c.blocked) || (c.seen - a.seen) || a.dist - c.dist);
+  // tape ties from the nearest landmarks with a clear line (best-crossing pair first)
   const near = p.landmarks.filter((l) => sol.coords.has(l.id)).map((l) => {
     const L = sol.coords.get(l.id);
-    return { id: l.id, dist: Math.hypot(X[0] - L[0], X[1] - L[1]), az: azimuth(X[0], X[1], L[0], L[1]) };
-  }).sort((a, c) => a.dist - c.dist);
+    return { id: l.id, dist: Math.hypot(X[0] - L[0], X[1] - L[1]), az: azimuth(X[0], X[1], L[0], L[1]), blocked: sightBlocker(shapes, L, X, tol) };
+  }).filter((n) => !n.blocked && n.dist > 1e-6).sort((a, c) => a.dist - c.dist);
   let tapes = near.slice(0, 3);
   if (near.length >= 2) {
     let bp = null;
@@ -77,7 +84,8 @@ function findOptions(p, sol, X, targetId = null) {
     if (bp) tapes = [...bp.t, ...near.filter((n) => !bp.t.includes(n)).slice(0, 1)];
     tapes.goodCrossing = bp && bp.g > Math.sin(30 * DEG);
   }
-  return { options, best: best ? best.pair : null, sigma95: best ? 2.4477 * Math.sqrt(best.c.lmax) : null, tapes };
+  return { options, best: best ? best.pair : null, sigma95: best && best.c ? 2.4477 * Math.sqrt(best.c.lmax) : null, tapes,
+           inside: insideShape(shapes, X, tol), nBlocked: options.length - clear.length };
 }
 
 /** Covariance (trace, largest eigenvalue) of a point fixed by two rays with angular sigma `sig`. */

@@ -1,5 +1,6 @@
 """Render the bundled example to examples/output/: plan (PDF, PNG, DXF),
-report (PDF), 1:1 world DXF and coordinate CSV. Uses the built
+report (PDF), 1:1 world DXF, coordinate CSV and KML. The plan is rendered
+without imagery (the example's location is made up). Uses the built
 site-survey.html, so run tools/build.py first."""
 
 import pathlib
@@ -24,14 +25,15 @@ def main():
         data = pg.evaluate("""() => {
           const ex = JSON.parse(document.querySelector('#examples').textContent).example_property;
           const p = SV.normalizeProject(JSON.parse(JSON.stringify(ex)));
-          const sol = SV.solveProject(p);
-          const plan = SV.renderPlan(p, sol).sheet;
-          return { planDxf: SV.sheetToDxf(plan), worldDxf: SV.worldDxf(p, sol), csv: SV.coordinatesCsv(p, sol),
-                   planSvg: SV.sheetToSvg(plan, { width: '17in', height: '11in' }), report: SV.reportHtml(p, sol) };
+          const sol = SV.solveProject(p), G = SV.georeference(p, sol);
+          const plan = SV.renderPlan(p, sol, { geo: G }).sheet;
+          return { planDxf: SV.sheetToDxf(plan), worldDxf: SV.worldDxf(p, sol), csv: SV.coordinatesCsv(p, sol, G), kml: SV.siteKml(p, sol, G),
+                   planSvg: SV.sheetToSvg(plan, { width: '17in', height: '11in' }), report: SV.reportHtml(p, sol, G) };
         }""")
         (OUT / f"{NAME}_plan.dxf").write_text(data["planDxf"])
         (OUT / f"{NAME}_1to1.dxf").write_text(data["worldDxf"])
         (OUT / f"{NAME}.csv").write_text(data["csv"])
+        (OUT / f"{NAME}.kml").write_text(data["kml"])
 
         def show(html, page_css):
             pg.evaluate("""([html, css]) => {

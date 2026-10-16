@@ -4,8 +4,10 @@
 
 const APP = {
   store: { projects: [], cur: 0 },
-  p: null, sol: null, tab: "book", sel: null, hiRef: null,
-  find: { mode: "point", id: "", line: "", s: "", n: "", e: "", snap: true, target: null, label: "" },
+  p: null, sol: null, geo: null, tab: "book", sel: null, hiRef: null,
+  edit: null,   // obstacle being drawn on the map
+  pick: null,   // landmark whose lat/lon is being picked on the imagery
+  find: { mode: "point", id: "", line: "", s: "", n: "", e: "", lat: "", lon: "", snap: true, target: null, label: "" },
 };
 const STORE_KEY = "siteSurvey.v1";
 
@@ -28,7 +30,7 @@ const exampleProject = () => normalizeProject(JSON.parse(JSON.stringify(JSON.par
 function switchProject(i) {
   APP.store.cur = clamp(i, 0, APP.store.projects.length - 1);
   APP.p = APP.store.projects[APP.store.cur];
-  APP.sel = null; APP.find.target = null; MAP.find = null; MAP.selected = null; MAP.view = null;
+  APP.sel = null; APP.find.target = null; MAP.find = null; MAP.selected = null; MAP.view = null; APP.edit = null; APP.pick = null;
   save();
   renderProjList();
   solve(true);
@@ -51,7 +53,12 @@ function changed(structural = false) {
 
 function solve(fit = false) {
   APP.sol = solveProject(APP.p);
+  APP.geo = georeference(APP.p, APP.sol);
+  MAP.geo = APP.geo;
+  APP.sol.messages.push(...geoMessages(APP.p, APP.geo), ...obstacleMessages(APP.p, APP.sol));
   if (fit) MAP.view = null;
+  syncEdit();
+  renderGeoTools();
   updateFind(false);
   renderMap(APP.p, APP.sol);
   renderMessages();
@@ -136,6 +143,16 @@ function refreshComputed() {
       node.classList.toggle("bad", !Number.isFinite(az));
     } else if (kind === "angle") {
       node.classList.toggle("bad", !!node.value.trim() && !Number.isFinite(parseAngle(node.value)));
+    } else if (kind === "lat" || kind === "lon") {
+      node.classList.toggle("bad", !!node.value.trim() && !Number.isFinite(parseLatLon(node.value, kind === "lon")));
+    } else if (kind === "geo") {
+      const l = p.landmarks.find((x) => x.id === id);
+      const r = APP.geo && APP.geo.resid && APP.geo.resid.get(id);
+      node.textContent = !l || (!l.lat.trim() && !l.lon.trim()) ? "" : r ? (APP.geo.n > 1 ? `${fmtLen(p, r.d, 1)} from survey` : "pins the imagery")
+        : sol.coords.has(id) ? "can't read" : "not located yet";
+      node.classList.toggle("flag", !!r && r.z > 3.5 && APP.geo.n >= 3);
+    } else if (kind === "geofit") {
+      node.innerHTML = geoSummary();
     }
   }
   if (APP.tab === "find") renderFindResult();
@@ -143,7 +160,7 @@ function refreshComputed() {
 
 function renderTabCounts() {
   const p = APP.p;
-  const counts = { landmarks: p.landmarks.length, book: p.setups.length, points: p.points.length, lines: p.lines.length };
+  const counts = { landmarks: p.landmarks.length, book: p.setups.length, points: p.points.length, lines: p.lines.length, obstacles: p.obstacles.length };
   for (const b of $$("#tabs button")) {
     const n = counts[b.dataset.tab];
     b.innerHTML = b.dataset.label + (n ? `<span class="count">${n}</span>` : "");
@@ -193,13 +210,21 @@ function nextName(list, prefix) {
 // ------------------------------------------------------------------ tabs
 function renderPane() {
   const pane = $("#pane");
-  const fn = { project: paneProject, landmarks: paneLandmarks, book: paneBook, points: panePoints, lines: paneLines, find: paneFind }[APP.tab];
+  const fn = { project: paneProject, landmarks: paneLandmarks, book: paneBook, points: panePoints, lines: paneLines,
+               obstacles: paneObstacles, find: paneFind }[APP.tab];
+  if (APP.tab !== "obstacles") APP.edit = null;
+  if (APP.tab !== "landmarks") APP.pick = null;
   const scroll = pane.scrollTop;
   pane.replaceChildren(...fn());
   pane.scrollTop = scroll;
   renderTabCounts();
   refreshComputed();
-  MAP.onPick = APP.tab === "find" && APP.find.mode === "map" ? pickFindTarget : pickEntity;
+  syncEdit();
+  const pickName = APP.pick && APP.p.landmarks.find((l) => l.id === APP.pick)?.name;
+  MAP.banner = APP.pick ? `Zoom in, then click exactly where ${pickName} is on the imagery. Esc cancels.`
+    : APP.edit ? "Click corners on the map (or a landmark/point to use its position). Drag squares to adjust. Esc when done." : "";
+  MAP.onPick = APP.pick ? pickGeo : APP.edit ? pickObstacleVertex : APP.tab === "find" && APP.find.mode === "map" ? pickFindTarget : pickEntity;
+  if (APP.sol) renderMap(APP.p, APP.sol);
   const hi = $(".card.sel, tr.hi");
   if (hi) hi.scrollIntoView({ block: "center" });
 }
@@ -237,6 +262,22 @@ function paneProject() {
     inp(p.datum.bearing, (v) => { p.datum.bearing = v; })));
   out.push(el("div", { class: "parsed", "data-calc": "bearing" }));
 
+  out.push(el("div", { class: "section" }, "Imagery & georeference"));
+  out.push(el("p", { class: "hint" }, "Give landmarks a latitude/longitude (Landmarks tab) to lay satellite imagery under the map. " +
+    "The survey is shifted and rotated onto them by least squares, keeping its own shape and scale, since your angles and tape are far more precise than GPS. " +
+    "Once imagery shows, landmarks you can see on it can be picked directly. Imagery needs an internet connection; everything else works offline."));
+  out.push(el("div", { class: "parsed", "data-calc": "geofit", style: "margin-bottom:8px" }));
+  const op = el("input", { type: "range", min: "10", max: "100", step: "5", value: String(Math.round(p.geo.opacity * 100)) });
+  op.addEventListener("input", () => { p.geo.opacity = op.value / 100; save(); renderGeoTools(); renderMap(p, APP.sol); });
+  out.push(el("div", { class: "grid2" },
+    field("Imagery source", sel(p.geo.source, Object.entries(IMAGERY).map(([k, v]) => [k, v.name]), (v) => { p.geo.source = v; changed(true); })),
+    field("Opacity", op)));
+  if (p.geo.source === "custom") {
+    out.push(field("Tile URL template, e.g. https://example.com/tiles/{z}/{x}/{y}.png", inp(p.geo.custom, (v) => { p.geo.custom = v; })));
+  }
+  out.push(el("label", { class: "row", style: "margin-bottom:6px" }, checkbox(p.geo.show, (v) => { p.geo.show = v; save(); renderGeoTools(); renderMap(p, APP.sol); }), "Show imagery on the map"),
+    el("label", { class: "row" }, checkbox(p.geo.print, (v) => { p.geo.print = v; save(); }), "Include imagery on the printed plan (not in DXF)"));
+
   out.push(el("div", { class: "section" }, "Plan sheet & report"));
   const scales = SCALES[p.units];
   out.push(el("div", { class: "grid2" },
@@ -259,7 +300,8 @@ function paneProject() {
 function paneLandmarks() {
   const p = APP.p;
   const out = [el("h3", {}, "Landmarks"),
-    el("p", { class: "hint" }, "Permanent marks you can set the transit over: rebar with caps, chiseled marks in concrete, etc. Describe each well enough to find it again. Each needs sightings from two located landmarks (or a setup on it sighting two), and at least one distance between two landmarks must be taped.")];
+    el("p", { class: "hint" }, "Permanent marks you can set the transit over: rebar with caps, chiseled marks in concrete, etc. Describe each well enough to find it again. Each needs sightings from two located landmarks (or a setup on it sighting two), and at least one distance between two landmarks must be taped."),
+    el("p", { class: "hint" }, "Latitude/longitude is optional and only places the satellite imagery: stand on the mark with a phone GPS app, or paste \"lat, lon\" copied from a map app. Once imagery shows, \"Pick\" a mark you can see on it (fence corners, slab corners) for a better fit.")];
   if (!p.landmarks.length) out.push(el("div", { class: "empty" }, "No landmarks yet."));
   for (const l of p.landmarks) {
     out.push(el("div", { class: `card${APP.sel === l.id ? " sel" : ""}`, "data-id": l.id },
@@ -268,7 +310,8 @@ function paneLandmarks() {
         el("div", { class: "calc grow", "data-calc": `pt:${l.id}` }),
         btn("Find", () => { APP.find = { ...APP.find, mode: "point", id: l.id }; APP.tab = "find"; renderPane(); }, "small"),
         btn("✕", () => deleteEntity(l.id), "small danger")),
-      el("div", { style: "margin-top:6px" }, area(l.desc, (v) => { l.desc = v; }, 2, { placeholder: "Description: what it is and how to find it" }))));
+      el("div", { style: "margin-top:6px" }, area(l.desc, (v) => { l.desc = v; }, 2, { placeholder: "Description: what it is and how to find it" })),
+      geoRow(l)));
   }
   out.push(btn("+ Add landmark", () => {
     p.landmarks.push({ id: sid("L"), name: nextName(p.landmarks, "LM-"), desc: "" });
@@ -277,6 +320,59 @@ function paneLandmarks() {
     changed(true);
   }));
   return out;
+}
+
+function geoRow(l) {
+  let lonIn = null;
+  const latIn = inp(l.lat, (v) => {
+    const two = splitLatLon(v);
+    if (two) { l.lat = String(two[0]); l.lon = String(two[1]); latIn.value = l.lat; lonIn.value = l.lon; } else l.lat = v;
+  }, { placeholder: "Latitude", "data-calc": "lat", style: "width:120px", title: "e.g. 40.771612, 40 46 17.8 N, or paste \"lat, lon\"" });
+  lonIn = inp(l.lon, (v) => { l.lon = v; }, { placeholder: "Longitude", "data-calc": "lon", style: "width:120px", title: "e.g. -73.974812 or 73 58 29.3 W" });
+  const picking = APP.pick === l.id;
+  return el("div", { class: "row", style: "margin-top:6px" },
+    el("span", { class: "calc", style: "flex:none" }, "Lat/lon"), latIn, lonIn,
+    sel(l.gsrc, Object.entries(GPS_SOURCES).map(([k, v]) => [k, `${v.name} (±${fmtLen(APP.p, v.sigma / M_PER_UNIT[APP.p.units], v.sigma < 0.5 ? 2 : 0)})`]),
+      (v) => { l.gsrc = v; changed(); }, { style: "width:150px", title: "Where the latitude/longitude came from; sets its weight in the fit" }),
+    btn(picking ? "Cancel" : "Pick", () => { APP.pick = picking ? null : l.id; if (APP.pick && !APP.geo.ok) { APP.pick = null; alert("Imagery appears once at least one landmark has a latitude/longitude. Enter one from a phone or map app first."); return; } if (APP.pick) { APP.p.geo.show = true; save(); renderGeoTools(); } renderPane(); },
+      `small${picking ? " primary" : ""}`),
+    el("span", { class: "calc grow res", "data-calc": `geo:${l.id}` }));
+}
+
+function geoSummary() {
+  const p = APP.p, G = APP.geo;
+  if (!G || !G.ok) {
+    return G && G.entered ? `${G.entered} landmark${G.entered > 1 ? "s have" : " has"} a latitude/longitude but none is located yet.`
+      : "No landmark has a latitude/longitude yet, so there is no imagery.";
+  }
+  const ents = entities(p);
+  const ll = localToLL(G, [p.datum.originE, p.datum.originN]);
+  if (G.single) return `Placed by one landmark, with grid north taken as true north. Add a second for the rotation. ${esc(ents.get(p.datum.origin)?.name || "Origin")} ≈ ${fmtLat(ll[0])}, ${fmtLon(ll[1])}.`;
+  return `Fit to <b>${G.n}</b> landmarks: grid north is <b>${gridNorthText(G.theta)}</b> (±${fmtDMS(2 * G.sigTheta).replace(/^0°/, "")} at 95%). ` +
+    `${G.dof > 0 ? `RMS misfit ${fmtLen(p, rmsGeo(G), 1)}. ` : "Two landmarks fit exactly, so there is no check on them. "}` +
+    `${G.fitScale ? "<b>Scale taken from GPS</b> (no taped distance yet). " : "Scale from your survey. "}` +
+    `${esc(ents.get(p.datum.origin)?.name || "Origin")} ≈ ${fmtLat(ll[0])}, ${fmtLon(ll[1])}.`;
+}
+
+function renderGeoTools() {
+  const p = APP.p, ok = !!(APP.geo && APP.geo.ok);
+  const lab = $("#imgTool");
+  lab.classList.toggle("disabled", !ok);
+  lab.title = ok ? "Satellite imagery under the map" : "Give a landmark a latitude/longitude (Landmarks tab) to show imagery";
+  $("#optImg").checked = p.geo.show;
+  $("#optImg").disabled = !ok;
+  $("#optImgOp").value = String(Math.round(p.geo.opacity * 100));
+  $("#optImgOp").disabled = !ok || !p.geo.show;
+}
+
+function pickGeo(X) {
+  const l = APP.p.landmarks.find((x) => x.id === APP.pick);
+  APP.pick = null;
+  if (l && APP.geo && APP.geo.ok) {
+    const [la, lo] = localToLL(APP.geo, X);
+    l.lat = la.toFixed(7); l.lon = lo.toFixed(7); l.gsrc = "image";
+  }
+  changed(true);
 }
 
 function paneBook() {
@@ -423,12 +519,84 @@ function paneLines() {
   return out;
 }
 
+// ------------------------------------------------------------- obstacles
+const round2 = (v) => Math.round(v * 100) / 100;
+
+function paneObstacles() {
+  const p = APP.p, ents = entities(p);
+  const out = [el("h3", {}, "Obstacles"),
+    el("p", { class: "hint" }, "Buildings, sheds, hedges and solid walls. They are drawn on the map and plan, and the Find tool won't send you to a setup whose line to the spot, or to its backsight, passes through one that blocks sight. " +
+      "Click Draw, then click the corners on the map (over the imagery, if you have it). Clicking a landmark or point uses its surveyed position as a corner. Drag the square handles to adjust.")];
+  if (!p.obstacles.length) out.push(el("div", { class: "empty" }, "No obstacles yet."));
+  for (const o of p.obstacles) {
+    const editing = APP.edit === o.id;
+    const chips = el("div", { class: "chips" }, ...o.pts.map((v, i) => el("span", { class: "chip" },
+      typeof v === "string" ? (ents.get(v)?.name || "?")
+        : el("button", { class: "link", title: "Edit coordinates", onclick: () => editVertex(o, i) }, `N ${v[1].toFixed(1)} E ${v[0].toFixed(1)}`),
+      el("button", { title: "Remove", onclick: () => { o.pts.splice(i, 1); changed(true); } }, "×"))),
+      sel("", [["", "+ corner at…"], { group: "Points", items: p.points.map((x) => [x.id, x.name]) }, { group: "Landmarks", items: lmOptions() }],
+        (v) => { if (v) { o.pts.push(v); changed(true); } }, { style: "width:120px" }));
+    out.push(el("div", { class: `card${editing ? " sel" : ""}` },
+      el("div", { class: "row" },
+        inp(o.name, (v) => { o.name = v; }, { style: "width:130px; font-weight:600", placeholder: "Name" }),
+        sel(o.kind, Object.entries(OBSTACLE_KINDS).map(([k, t]) => [k, t.name]), (v) => { o.kind = v; o.closed = OBSTACLE_KINDS[v].closed; changed(true); }, { style: "width:150px" }),
+        el("label", { class: "row calc", title: "Untick for outlines you can see over (a patio, a low deck)" }, checkbox(o.blocks, (v) => { o.blocks = v; changed(true); }), "Blocks sight"),
+        el("label", { class: "row calc" }, checkbox(o.closed, (v) => { o.closed = v; changed(true); }), "Closed"),
+        el("span", { class: "grow" }),
+        btn(editing ? "Done" : "Draw", () => { APP.edit = editing ? null : o.id; renderPane(); }, editing ? "small primary" : "small"),
+        btn("✕", () => { p.obstacles = p.obstacles.filter((x) => x !== o); if (APP.edit === o.id) APP.edit = null; changed(true); }, "small danger")),
+      el("div", { style: "margin:6px 0" }, chips),
+      inp(o.desc, (v) => { o.desc = v; }, { placeholder: "Description (height, material, when built…)", style: "width:100%" })));
+  }
+  out.push(btn("+ Add obstacle", () => {
+    const o = { id: sid("O"), name: nextName(p.obstacles, "Building "), kind: "building", closed: true, blocks: true, pts: [], desc: "" };
+    p.obstacles.push(o);
+    APP.edit = o.id;
+    changed(true);
+  }));
+  return out;
+}
+
+function editVertex(o, i) {
+  const v = o.pts[i];
+  const t = prompt(`Corner ${i + 1}: northing, easting (${unitAbbr(APP.p)})`, `${v[1].toFixed(2)}, ${v[0].toFixed(2)}`);
+  if (t === null) return;
+  const m = /^\s*(-?[\d.]+)\s*[,;\s]\s*(-?[\d.]+)\s*$/.exec(t);
+  if (!m || !Number.isFinite(+m[1]) || !Number.isFinite(+m[2])) { alert("Enter the northing and easting separated by a comma."); return; }
+  o.pts[i] = [+m[2], +m[1]];
+  changed(true);
+}
+
+/** Mirror the obstacle being drawn into the map overlay. */
+function syncEdit() {
+  const o = APP.edit && APP.p.obstacles.find((x) => x.id === APP.edit);
+  if (!o) { APP.edit = null; MAP.edit = null; MAP.onVertexDrag = null; return; }
+  MAP.edit = { pts: o.pts.map((v) => (typeof v === "string" ? (APP.sol && APP.sol.coords.get(v)) || null : v)),
+               free: o.pts.map((v) => typeof v !== "string"), closed: o.closed && o.pts.length >= 3 };
+  MAP.onVertexDrag = (i, X, done) => {
+    if (typeof o.pts[i] === "string") return;
+    o.pts[i] = [round2(X[0]), round2(X[1])];
+    if (done) changed(true);
+    else { syncEdit(); renderMap(APP.p, APP.sol); }
+  };
+}
+
+function pickObstacleVertex(X, owner) {
+  const o = APP.p.obstacles.find((x) => x.id === APP.edit);
+  if (!o) return;
+  if (owner && entities(APP.p).has(owner) && APP.sol.coords.has(owner)) o.pts.push(owner);
+  else o.pts.push([round2(X[0]), round2(X[1])]);
+  changed(true);
+}
+
 // ------------------------------------------------------------------ find
 function paneFind() {
   const p = APP.p, f = APP.find;
   const out = [el("h3", {}, "Find a point"),
     el("p", { class: "hint" }, "Pick what to find. The best two setups are chosen so their sight lines cross squarely, preferring setups you have already sighted from (known line of sight). Mark both lines on the ground; the point is where they cross. The tape distances give an independent check.")];
-  const modes = [["point", "A point or landmark"], ["line", "Along a line"], ["coord", "Coordinates"], ["map", "Click on the map"]];
+  const modes = [["point", "A point or landmark"], ["line", "Along a line"], ["coord", "Coordinates"],
+    ...(APP.geo && APP.geo.ok ? [["ll", "Latitude / longitude"]] : []), ["map", "Click on the map"]];
+  if (f.mode === "ll" && !(APP.geo && APP.geo.ok)) f.mode = "point";
   out.push(el("div", { class: "row", style: "flex-wrap:wrap; gap:12px; margin-bottom:10px" }, ...modes.map(([k, t]) => {
     const r = el("input", { type: "radio", name: "fmode", checked: f.mode === k });
     r.addEventListener("change", () => { f.mode = k; renderPane(); updateFind(); });
@@ -445,6 +613,11 @@ function paneFind() {
     out.push(el("div", { class: "grid2" },
       field("Northing", inp(f.n, (v) => { f.n = v; updateFind(); }, { inputmode: "decimal" })),
       field("Easting", inp(f.e, (v) => { f.e = v; updateFind(); }, { inputmode: "decimal" }))));
+  } else if (f.mode === "ll") {
+    out.push(el("div", { class: "grid2" },
+      field("Latitude", inp(f.lat, (v) => { const two = splitLatLon(v); if (two) { f.lat = String(two[0]); f.lon = String(two[1]); } else f.lat = v; updateFind(); }, { "data-calc": "lat" })),
+      field("Longitude", inp(f.lon, (v) => { f.lon = v; updateFind(); }, { "data-calc": "lon" }))),
+      el("p", { class: "hint" }, "Only as good as the georeference (a few feet with phone GPS): fine for a utility locate ticket or a spot picked on a map, not for exact work."));
   } else {
     out.push(el("p", { class: "hint" }, "Click anywhere on the map, e.g. where you plan to dig."),
       el("label", { class: "row" }, checkbox(f.snap, (v) => { f.snap = v; }), "Snap to the nearest line when close to one"));
@@ -471,6 +644,9 @@ function updateFind(render = true) {
   } else if (f.mode === "coord") {
     const n = Number(f.n), e = Number(f.e);
     if (String(f.n).trim() && String(f.e).trim() && Number.isFinite(n) && Number.isFinite(e)) { X = [e, n]; label = `N ${n.toFixed(2)}, E ${e.toFixed(2)}`; }
+  } else if (f.mode === "ll" && APP.geo && APP.geo.ok) {
+    const la = parseLatLon(f.lat, false), lo = parseLatLon(f.lon, true);
+    if (Number.isFinite(la) && Number.isFinite(lo)) { X = llToLocal(APP.geo, la, lo); label = `${fmtLat(la)}, ${fmtLon(lo)}`; }
   } else if (f.mode === "map" && f.target) { X = f.target; label = f.label; }
   f.result = X ? { X, label, targetId, opts: findOptions(p, sol, X, targetId) } : null;
   MAP.find = f.result ? { target: X, setups: f.result.opts.best || [] } : null;
@@ -484,11 +660,13 @@ function renderFindResult() {
   if (!r) { box.innerHTML = `<p class="empty">Choose a target.</p>`; return; }
   const ents = entities(p);
   const nm = (id) => esc(ents.get(id)?.name || "?");
-  let s = findCardHtml(p, APP.sol, r.label, r.X, r.targetId).replace('class="card"', 'class="card" style="background:#fff"');
+  const nmO = (o) => esc(o.name || "an obstacle");
+  let s = findCardHtml(p, APP.sol, r.label, r.X, r.targetId, APP.geo).replace('class="card"', 'class="card" style="background:#fff"');
   s += `<div class="section">All setups (${r.opts.options.length})</div><table class="opts"><tr><th>Set up on</th><th>Sight</th><th>Turn to</th><th class="n">Distance</th><th>Line of sight</th></tr>`;
   for (const o of r.opts.options) {
     s += `<tr><td><b>${nm(o.station)}</b></td><td>${nm(o.backsight)}</td><td>${fmtDMS(o.reading)}</td><td class="n">${fmtLen(p, o.dist)}</td>` +
-         `<td>${r.targetId ? (o.seen ? "sighted before" : "not checked") : "—"}</td></tr>`;
+         `<td>${o.blocked ? `<span class="blk">blocked by ${nmO(o.blocked)}</span>` : o.bsBlocked ? `<span class="blk">backsight blocked by ${nmO(o.bsBlocked)}</span>`
+           : r.targetId ? (o.seen ? "sighted before" : "not checked") : p.obstacles.length ? "clear" : "—"}</td></tr>`;
   }
   s += `</table><p class="hint" style="margin-top:8px">Readings assume the circle is set to 0°00'00" on the backsight and turned ${p.circle === "cw" ? "clockwise" : "counter-clockwise"}.</p>`;
   box.innerHTML = s;
@@ -531,6 +709,9 @@ function deleteEntity(id) {
   p.landmarks = p.landmarks.filter((x) => x.id !== id);
   p.points = p.points.filter((x) => x.id !== id);
   for (const l of p.lines) l.pts = l.pts.filter((x) => x !== id);
+  for (const o of p.obstacles) {
+    o.pts = o.pts.map((v) => (v !== id ? v : APP.sol.coords.has(id) ? APP.sol.coords.get(id).map(round2) : null)).filter((v) => v !== null);
+  }
   APP.p = normalizeProject(p);
   APP.store.projects[APP.store.cur] = APP.p;
   changed(true);
@@ -551,12 +732,40 @@ function printWith(html, pageCss) {
   window.print();
   document.title = prev;
 }
-function printPlan() {
-  const { sheet } = renderPlan(APP.p, APP.sol);
-  printWith(sheetToSvg(sheet, { width: "17in", height: "11in" }).replace("<svg ", '<svg class="plan" '), "@page { size: 17in 11in; margin: 0; }");
+/** Load images (so they are in the cache before printing). Resolves to the number that loaded. */
+function preloadImages(urls, timeout = 20000) {
+  return new Promise((resolve) => {
+    let left = urls.length, ok = 0;
+    if (!left) { resolve(0); return; }
+    const t = setTimeout(() => resolve(ok), timeout);
+    for (const u of urls) {
+      const im = new Image();
+      im.onload = () => { ok++; if (--left === 0) { clearTimeout(t); resolve(ok); } };
+      im.onerror = () => { if (--left === 0) { clearTimeout(t); resolve(ok); } };
+      im.src = u;
+    }
+  });
+}
+
+/** Plan sheet SVG for printing, with imagery when asked for. */
+async function planPrintSvg(p, sol, G, { interactive = true } = {}) {
+  const plan = renderPlan(p, sol, { geo: G });
+  let svg = sheetToSvg(plan.sheet, { width: "17in", height: "11in" }).replace("<svg ", '<svg class="plan" ');
+  if (p.geo.print && G && G.ok) {
+    const im = planImagery(p, G, plan);
+    const ok = await preloadImages(im.tiles.map((t) => t.href));
+    if (interactive && ok < im.tiles.length &&
+        !confirm(`${im.tiles.length - ok} of ${im.tiles.length} imagery tiles didn't load (offline?). Print anyway?`)) return null;
+    svg = svg.replace(/(<rect width="[^"]+" height="[^"]+" fill="#fff"\/>)/, (m) => m + im.svg);
+  }
+  return svg;
+}
+async function printPlan() {
+  const svg = await planPrintSvg(APP.p, APP.sol, APP.geo);
+  if (svg) printWith(svg, "@page { size: 17in 11in; margin: 0; }");
 }
 function printReport() {
-  printWith(reportHtml(APP.p, APP.sol), "@page { size: letter; margin: 0.55in; }");
+  printWith(reportHtml(APP.p, APP.sol, APP.geo), "@page { size: letter; margin: 0.55in; }");
 }
 
 function bindUi() {
@@ -588,14 +797,23 @@ function bindUi() {
   const menu = $(".menu");
   $("#btnExport").addEventListener("click", (e) => { e.stopPropagation(); menu.classList.toggle("open"); });
   document.addEventListener("click", () => menu.classList.remove("open"));
-  $("#btnCsv").addEventListener("click", () => downloadBlob(new Blob([coordinatesCsv(APP.p, APP.sol)], { type: "text/csv" }), fileName("csv")));
-  $("#btnDxfPlan").addEventListener("click", () => downloadBlob(new Blob([sheetToDxf(renderPlan(APP.p, APP.sol).sheet)], { type: "application/dxf" }), fileName("dxf")));
+  $("#btnCsv").addEventListener("click", () => downloadBlob(new Blob([coordinatesCsv(APP.p, APP.sol, APP.geo)], { type: "text/csv" }), fileName("csv")));
+  $("#btnKml").addEventListener("click", () => {
+    if (!APP.geo || !APP.geo.ok) { alert("Give at least one landmark a latitude/longitude first (Landmarks tab)."); return; }
+    downloadBlob(new Blob([siteKml(APP.p, APP.sol, APP.geo)], { type: "application/vnd.google-earth.kml+xml" }), fileName("kml"));
+  });
+  $("#btnDxfPlan").addEventListener("click", () => downloadBlob(new Blob([sheetToDxf(renderPlan(APP.p, APP.sol, { geo: APP.geo }).sheet)], { type: "application/dxf" }), fileName("dxf")));
   $("#btnDxfWorld").addEventListener("click", () => downloadBlob(new Blob([worldDxf(APP.p, APP.sol)], { type: "application/dxf" }), fileName("dxf").replace(".dxf", "_1to1.dxf")));
   $("#btnPrintPlan").addEventListener("click", printPlan);
   $("#btnPrintReport").addEventListener("click", printReport);
   for (const [id, k] of [["#optSights", "sights"], ["#optEll", "ellipses"], ["#optLabels", "labels"]]) {
     $(id).addEventListener("change", (e) => { MAP.opts[k] = e.target.checked; renderMap(APP.p, APP.sol); });
   }
+  $("#optImg").addEventListener("change", (e) => { APP.p.geo.show = e.target.checked; save(); renderGeoTools(); renderMap(APP.p, APP.sol); });
+  $("#optImgOp").addEventListener("input", (e) => { APP.p.geo.opacity = e.target.value / 100; save(); renderMap(APP.p, APP.sol); });
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape" && (APP.pick || APP.edit)) { APP.pick = null; APP.edit = null; renderPane(); }
+  });
   $("#btnFit").addEventListener("click", () => { mapFit(APP.sol); renderMap(APP.p, APP.sol); });
   window.addEventListener("resize", () => renderMap(APP.p, APP.sol));
   bindMap(() => ({ p: APP.p, sol: APP.sol }));
@@ -607,5 +825,7 @@ function bindUi() {
   if (!APP.store.projects.length) APP.store.projects.push(exampleProject());
   bindUi();
   switchProject(APP.store.cur);
-  window.SV = { APP, solveProject, normalizeProject, findOptions, renderPlan, sheetToSvg, sheetToDxf, worldDxf, coordinatesCsv, reportHtml, parseAngle, fmtDMS };
+  window.SV = { APP, MAP, solveProject, normalizeProject, findOptions, renderPlan, sheetToSvg, sheetToDxf, worldDxf, coordinatesCsv, reportHtml,
+                parseAngle, fmtDMS, georeference, localToLL, llToLocal, parseLatLon, imageryTiles, llToPx, pxToLl, planImagery, planPrintSvg,
+                siteKml, blockingShapes, sightBlocker, obstacleMessages, geoMessages, renderMap, renderPane };
 })();

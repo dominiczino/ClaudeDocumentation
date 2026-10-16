@@ -48,12 +48,21 @@ main { flex: 1; display: grid; grid-template-columns: minmax(520px, 44%) 1fr; mi
 .summary { color: var(--ink); }
 #mapSvg { flex: 1; width: 100%; min-height: 0; display: block; cursor: grab; touch-action: none; user-select: none; }
 #mapSvg .grid { stroke: #e3e7ec; stroke-width: 1; }
-#mapSvg .grid-label { fill: #9aa3ad; font-size: 10px; }
+#mapSvg .grid-label { fill: #7d8790; font-size: 10px; paint-order: stroke; stroke: rgba(255,255,255,.75); stroke-width: 2.5px; }
 #mapSvg .find-ray { stroke: #e0458b; stroke-width: 2; }
 #mapSvg .find-bs { stroke: #e0458b; stroke-width: 1; stroke-dasharray: 4 3; opacity: .7; }
 #mapSvg .find-target { fill: none; stroke: #e0458b; stroke-width: 2; }
 #mapSvg .sel-ring { fill: none; stroke: var(--accent); stroke-width: 2; }
 #mapSvg [data-owner] { cursor: pointer; }
+#mapSvg.picking, #mapSvg.picking [data-owner] { cursor: crosshair; }
+#mapSvg .attr { font-size: 10px; fill: #fff; paint-order: stroke; stroke: rgba(0,0,0,.55); stroke-width: 2.5px; }
+#mapSvg .edit-outline { fill: none; stroke: #e0458b; stroke-width: 2; stroke-dasharray: 6 3; }
+#mapSvg .vtx { fill: #fff; stroke: #e0458b; stroke-width: 2; cursor: move; }
+#mapSvg .vtx-ref { fill: none; stroke: #e0458b; stroke-width: 2; }
+#mapSvg .banner rect { fill: rgba(23,32,43,.88); }
+#mapSvg .banner text { fill: #fff; font-size: 12px; font-family: system-ui, sans-serif; }
+.map-tools input[type=range] { width: 80px; }
+.map-tools label.disabled { opacity: .45; }
 .messages { max-height: 30%; overflow-y: auto; background: var(--panel); border-top: 1px solid var(--line); }
 .msg { padding: 6px 12px; border-bottom: 1px solid #f0f2f4; display: flex; gap: 8px; cursor: pointer; font-size: 12.5px; }
 .msg:hover { background: var(--accent-soft); }
@@ -96,6 +105,7 @@ table.opts { width: 100%; border-collapse: collapse; font-size: 12px; margin-top
 table.opts th, table.opts td { border-bottom: 1px solid #eef0f2; padding: 4px; text-align: left; }
 table.opts td.n { text-align: right; font-variant-numeric: tabular-nums; }
 .empty { color: var(--muted); padding: 20px 4px; }
+.blk { color: var(--danger); }
 
 #printArea { display: none; }
 @media print {
@@ -121,6 +131,7 @@ table.opts td.n { text-align: right; font-variant-numeric: tabular-nums; }
 .rep tr.flag td { background: #fff1cc; }
 .rep tr.off td { color: #888; text-decoration: line-through; }
 .rep .fb td { font-size: 8.5pt; white-space: nowrap; }
+.rep table.grid td:first-child { white-space: nowrap; }
 .rep .fb td:last-child { white-space: normal; }
 .rep .small { font-size: 8.5pt; color: #555; }
 .rep .fig { text-align: center; }
