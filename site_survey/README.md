@@ -183,6 +183,12 @@ python tools/build.py               # standard library only
   squares, data snooping, reliability), `06-find`, `06-geo` (lat/lon fit, imagery tiles, KML),
   `06-obstacles` (sight-line blocking), `07-output` (SVG, DXF), `08-site` (plan sheet, 1:1 DXF,
   CSV), `09-map`, `10-report`, `11-ui`.
+* `python tools/build.py --hosted OUT.html` builds the claude.ai artifact version. The host
+  supplies the page skeleton, so this version has none of its own. It saves surveys to the
+  viewer's account (`db` capability) rather than only to the browser. Files go through the host's
+  save prompt, with DXF and KML wrapped in a .zip because those extensions aren't on its list.
+  Print is replaced by "Plan (SVG)" and "Report (HTML)" files you open and print. Dialogs are drawn
+  in the page. Imagery is off, because a hosted page can't load tiles from other sites.
 * `tools/make_dxf_template.py` (needs ezdxf) regenerates `src/dxf_template.json`.
 * `tools/make_example.py` builds `examples/example_property.json` from known true coordinates with
   simulated reading noise. It books only sight lines that clear the house and shed, and adds

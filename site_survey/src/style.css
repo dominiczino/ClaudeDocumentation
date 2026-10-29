@@ -1,10 +1,12 @@
 :root {
+  color-scheme: light;
   --bg: #eef0f3; --panel: #fff; --ink: #1d232b; --muted: #69727d; --line: #d5d9df;
   --accent: #1f5fa8; --accent-soft: #e6eef8; --danger: #a3302a; --warn: #b06d00; --ok: #2d7d46;
   --top: #17202b;
   font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; font-size: 13px; color: var(--ink);
 }
 * { box-sizing: border-box; }
+[hidden] { display: none !important; }
 html, body { height: 100%; }
 body { margin: 0; background: var(--bg); display: flex; flex-direction: column; overflow: hidden; }
 button, select, input, textarea { font: inherit; color: inherit; }
@@ -40,7 +42,7 @@ main { flex: 1; display: grid; grid-template-columns: minmax(520px, 44%) 1fr; mi
 .tabs button { border: 1px solid transparent; border-bottom: 0; border-radius: 6px 6px 0 0; background: none; padding: 6px 12px; color: var(--muted); }
 .tabs button.active { border-color: var(--line); background: #fff; color: var(--ink); font-weight: 600; margin-bottom: -1px; }
 .tabs button .count { font-size: 11px; color: var(--muted); margin-left: 4px; }
-.pane { flex: 1; overflow-y: auto; padding: 12px 14px 40px; }
+.pane { flex: 1; overflow-y: auto; padding: 12px 16px 40px; }
 .right { display: flex; flex-direction: column; min-width: 0; min-height: 0; }
 .map-tools { display: flex; gap: 12px; align-items: center; padding: 6px 12px; background: var(--panel); border-bottom: 1px solid var(--line); font-size: 12px; color: var(--muted); }
 .map-tools label { display: flex; gap: 4px; align-items: center; cursor: pointer; }
@@ -107,6 +109,19 @@ table.opts td.n { text-align: right; font-variant-numeric: tabular-nums; }
 .empty { color: var(--muted); padding: 20px 4px; }
 .blk { color: var(--danger); }
 
+/* dialogs and save state */
+.dlg-back { position: fixed; inset: 0; background: rgba(15, 22, 30, .45); display: flex; align-items: center; justify-content: center; z-index: 50;
+  padding: max(16px, env(safe-area-inset-top, 0px)) max(16px, env(safe-area-inset-right, 0px)) max(16px, env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px)); }
+.dlg { background: var(--panel); border-radius: 10px; padding: 18px 20px 16px; width: min(440px, 100%); box-shadow: 0 12px 40px rgba(0,0,0,.25); }
+.dlg h4 { margin: 0 0 8px; font-size: 15px; }
+.dlg p { margin: 0 0 12px; line-height: 1.45; color: var(--ink); }
+.dlg-input { width: 100%; margin-bottom: 12px; }
+.dlg-buttons { display: flex; justify-content: flex-end; gap: 8px; }
+button.danger-fill { background: var(--danger); border-color: var(--danger); color: #fff; font-weight: 600; }
+button:focus-visible { outline: 2px solid #9cc0ea; outline-offset: 1px; }
+.save-state { font-size: 11.5px; color: #aab6c3; white-space: nowrap; }
+.save-state.error { color: #f0b36a; }
+
 #printArea { display: none; }
 @media print {
   body > *:not(#printArea) { display: none !important; }
@@ -142,9 +157,22 @@ table.opts td.n { text-align: right; font-variant-numeric: tabular-nums; }
 .rep .card ol { margin: 4px 0; padding-left: 18px; }
 .rep .card-n { font-size: 8.5pt; color: #333; }
 
+@media (max-width: 560px) {
+  .grid2 { grid-template-columns: 1fr; }
+  .topbar { gap: 8px; }
+  .topbar select { min-width: 0; flex: 1; }
+  .group { flex-wrap: wrap; }
+  .group.end { margin-left: 0; }
+  .map-tools { flex-wrap: wrap; }
+  .row { flex-wrap: wrap; }
+  .row > input, .row > select { max-width: 100%; }
+}
 @media (max-width: 1000px) {
+  .table-scroll { overflow-x: auto; }
+  table.book { min-width: 560px; }
   body { overflow: auto; height: auto; }
-  main { grid-template-columns: 1fr; }
+  main { grid-template-columns: minmax(0, 1fr); }
+  .left, .right { min-width: 0; }
   .left { border-right: 0; }
   .pane { max-height: none; }
   .right { height: 80vh; }

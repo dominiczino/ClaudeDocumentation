@@ -146,7 +146,7 @@ function geoMessages(p, G) {
   const out = [];
   if (!G || !G.ok) return out;
   const ents = entities(p);
-  if (G.single) out.push({ lvl: "info", msg: "Only one landmark has a latitude/longitude, so the imagery is placed with grid north = true north. Add a second for the rotation.", ids: [] });
+  if (G.single) out.push({ lvl: "info", msg: "Only one landmark has a latitude/longitude, so grid north is taken as true north. Add a second for the rotation.", ids: [] });
   if (G.n >= 3) {
     for (const [id, r] of G.resid) {
       if (r.z > 3.5) {

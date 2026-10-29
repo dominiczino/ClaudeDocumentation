@@ -77,7 +77,7 @@ function renderMap(p, sol) {
   // imagery underlay (screen coordinates are y down)
   let imagery = "";
   const G = MAP.geo;
-  if (G && G.ok && p.geo.show) {
+  if (G && G.ok && p.geo.show && !HOSTED) {
     const { Ti } = mapT();
     const toS = (w) => { const q = T(w); return [q[0], H - q[1]]; };
     const tiles = imageryTiles(p, G, toS, (q) => Ti(q[0], H - q[1]), [0, 0, W, H], (G.u * G.s) / MAP.view.ppu);

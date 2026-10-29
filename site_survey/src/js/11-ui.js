@@ -16,6 +16,7 @@ let _saveT = null;
 function save() {
   clearTimeout(_saveT);
   _saveT = setTimeout(() => { try { localStorage.setItem(STORE_KEY, JSON.stringify(APP.store)); } catch (_) { /* ignore */ } }, 200);
+  hostSave(APP.store);
 }
 function loadStore() {
   try {
@@ -30,6 +31,7 @@ const exampleProject = () => normalizeProject(JSON.parse(JSON.stringify(JSON.par
 function switchProject(i) {
   APP.store.cur = clamp(i, 0, APP.store.projects.length - 1);
   APP.p = APP.store.projects[APP.store.cur];
+  try { localStorage.setItem(STORE_KEY + ".cur", APP.p.id); } catch (_) { /* ignore */ }
   APP.sel = null; APP.find.target = null; MAP.find = null; MAP.selected = null; MAP.view = null; APP.edit = null; APP.pick = null;
   save();
   renderProjList();
@@ -262,21 +264,28 @@ function paneProject() {
     inp(p.datum.bearing, (v) => { p.datum.bearing = v; })));
   out.push(el("div", { class: "parsed", "data-calc": "bearing" }));
 
-  out.push(el("div", { class: "section" }, "Imagery & georeference"));
-  out.push(el("p", { class: "hint" }, "Give landmarks a latitude/longitude (Landmarks tab) to lay satellite imagery under the map. " +
-    "The survey is shifted and rotated onto them by least squares, keeping its own shape and scale, since your angles and tape are far more precise than GPS. " +
-    "Once imagery shows, landmarks you can see on it can be picked directly. Imagery needs an internet connection; everything else works offline."));
-  out.push(el("div", { class: "parsed", "data-calc": "geofit", style: "margin-bottom:8px" }));
-  const op = el("input", { type: "range", min: "10", max: "100", step: "5", value: String(Math.round(p.geo.opacity * 100)) });
-  op.addEventListener("input", () => { p.geo.opacity = op.value / 100; save(); renderGeoTools(); renderMap(p, APP.sol); });
-  out.push(el("div", { class: "grid2" },
-    field("Imagery source", sel(p.geo.source, Object.entries(IMAGERY).map(([k, v]) => [k, v.name]), (v) => { p.geo.source = v; changed(true); })),
-    field("Opacity", op)));
-  if (p.geo.source === "custom") {
-    out.push(field("Tile URL template, e.g. https://example.com/tiles/{z}/{x}/{y}.png", inp(p.geo.custom, (v) => { p.geo.custom = v; })));
+  out.push(el("div", { class: "section" }, HOSTED ? "Georeference" : "Imagery & georeference"));
+  if (HOSTED) {
+    out.push(el("p", { class: "hint" }, "Give landmarks a latitude/longitude (Landmarks tab) to place the survey on the globe: grid north vs. true north, " +
+      "lat/lon in the report and CSV, Google Earth export, and finding a spot by lat/lon. The survey keeps its own shape and scale. " +
+      "Satellite imagery isn't available here, because a hosted page can't load map tiles from other sites. The standalone site-survey.html file shows it."),
+      el("div", { class: "parsed", "data-calc": "geofit" }));
+  } else {
+    out.push(el("p", { class: "hint" }, "Give landmarks a latitude/longitude (Landmarks tab) to lay satellite imagery under the map. " +
+      "The survey is shifted and rotated onto them by least squares, keeping its own shape and scale, since your angles and tape are far more precise than GPS. " +
+      "Once imagery shows, landmarks you can see on it can be picked directly. Imagery needs an internet connection; everything else works offline."));
+    out.push(el("div", { class: "parsed", "data-calc": "geofit", style: "margin-bottom:8px" }));
+    const op = el("input", { type: "range", min: "10", max: "100", step: "5", value: String(Math.round(p.geo.opacity * 100)) });
+    op.addEventListener("input", () => { p.geo.opacity = op.value / 100; save(); renderGeoTools(); renderMap(p, APP.sol); });
+    out.push(el("div", { class: "grid2" },
+      field("Imagery source", sel(p.geo.source, Object.entries(IMAGERY).map(([k, v]) => [k, v.name]), (v) => { p.geo.source = v; changed(true); })),
+      field("Opacity", op)));
+    if (p.geo.source === "custom") {
+      out.push(field("Tile URL template, e.g. https://example.com/tiles/{z}/{x}/{y}.png", inp(p.geo.custom, (v) => { p.geo.custom = v; })));
+    }
+    out.push(el("label", { class: "row", style: "margin-bottom:6px" }, checkbox(p.geo.show, (v) => { p.geo.show = v; save(); renderGeoTools(); renderMap(p, APP.sol); }), "Show imagery on the map"),
+      el("label", { class: "row" }, checkbox(p.geo.print, (v) => { p.geo.print = v; save(); }), "Include imagery on the printed plan (not in DXF)"));
   }
-  out.push(el("label", { class: "row", style: "margin-bottom:6px" }, checkbox(p.geo.show, (v) => { p.geo.show = v; save(); renderGeoTools(); renderMap(p, APP.sol); }), "Show imagery on the map"),
-    el("label", { class: "row" }, checkbox(p.geo.print, (v) => { p.geo.print = v; save(); }), "Include imagery on the printed plan (not in DXF)"));
 
   out.push(el("div", { class: "section" }, "Plan sheet & report"));
   const scales = SCALES[p.units];
@@ -291,7 +300,7 @@ function paneProject() {
   out.push(field("Notes (one per line)", area(p.notes.join("\n"), (v) => { p.notes = v.split("\n").map((x) => x.trim()).filter(Boolean); }, 4)));
   if (p.font !== "arial") {
     const f = FONTS[p.font];
-    const links = f.files.map((name) => { const a = el("a", { href: "#" }, name); a.onclick = (e) => { e.preventDefault(); downloadBlob(fontFileBlob(name), name); }; return a; });
+    const links = f.files.map((name) => { const a = el("a", { href: "#" }, name); a.onclick = (e) => { e.preventDefault(); saveFile(name, fontFileBlob(name)); }; return a; });
     out.push(el("p", { class: "hint" }, "For DXF text to fit in CAD, install ", links[0], " and ", links[1], " on that computer."));
   }
   return out;
@@ -301,7 +310,9 @@ function paneLandmarks() {
   const p = APP.p;
   const out = [el("h3", {}, "Landmarks"),
     el("p", { class: "hint" }, "Permanent marks you can set the transit over: rebar with caps, chiseled marks in concrete, etc. Describe each well enough to find it again. Each needs sightings from two located landmarks (or a setup on it sighting two), and at least one distance between two landmarks must be taped."),
-    el("p", { class: "hint" }, "Latitude/longitude is optional and only places the satellite imagery: stand on the mark with a phone GPS app, or paste \"lat, lon\" copied from a map app. Once imagery shows, \"Pick\" a mark you can see on it (fence corners, slab corners) for a better fit.")];
+    el("p", { class: "hint" }, (HOSTED ? "Latitude/longitude is optional and only georeferences the survey (Project tab)" : "Latitude/longitude is optional and only places the satellite imagery") +
+      ": stand on the mark with a phone GPS app, or paste \"lat, lon\" copied from a map app." +
+      (HOSTED ? "" : " Once imagery shows, \"Pick\" a mark you can see on it (fence corners, slab corners) for a better fit."))];
   if (!p.landmarks.length) out.push(el("div", { class: "empty" }, "No landmarks yet."));
   for (const l of p.landmarks) {
     out.push(el("div", { class: `card${APP.sel === l.id ? " sel" : ""}`, "data-id": l.id },
@@ -334,7 +345,7 @@ function geoRow(l) {
     el("span", { class: "calc", style: "flex:none" }, "Lat/lon"), latIn, lonIn,
     sel(l.gsrc, Object.entries(GPS_SOURCES).map(([k, v]) => [k, `${v.name} (±${fmtLen(APP.p, v.sigma / M_PER_UNIT[APP.p.units], v.sigma < 0.5 ? 2 : 0)})`]),
       (v) => { l.gsrc = v; changed(); }, { style: "width:150px", title: "Where the latitude/longitude came from; sets its weight in the fit" }),
-    btn(picking ? "Cancel" : "Pick", () => { APP.pick = picking ? null : l.id; if (APP.pick && !APP.geo.ok) { APP.pick = null; alert("Imagery appears once at least one landmark has a latitude/longitude. Enter one from a phone or map app first."); return; } if (APP.pick) { APP.p.geo.show = true; save(); renderGeoTools(); } renderPane(); },
+    HOSTED ? null : btn(picking ? "Cancel" : "Pick", () => { APP.pick = picking ? null : l.id; if (APP.pick && !APP.geo.ok) { APP.pick = null; uiAlert("Imagery appears once at least one landmark has a latitude/longitude. Enter one from a phone or map app first."); return; } if (APP.pick) { APP.p.geo.show = true; save(); renderGeoTools(); } renderPane(); },
       `small${picking ? " primary" : ""}`),
     el("span", { class: "calc grow res", "data-calc": `geo:${l.id}` }));
 }
@@ -357,6 +368,7 @@ function geoSummary() {
 function renderGeoTools() {
   const p = APP.p, ok = !!(APP.geo && APP.geo.ok);
   const lab = $("#imgTool");
+  lab.hidden = HOSTED; $("#optImgOp").hidden = HOSTED;
   lab.classList.toggle("disabled", !ok);
   lab.title = ok ? "Satellite imagery under the map" : "Give a landmark a latitude/longitude (Landmarks tab) to show imagery";
   $("#optImg").checked = p.geo.show;
@@ -405,7 +417,7 @@ function paneBook() {
       el("td", {}, inp(b.note, (v) => { b.note = v; })),
       el("td", {}, btn("✕", () => { p.baselines = p.baselines.filter((x) => x !== b); changed(true); }, "small danger"))));
   }
-  out.push(tb, btn("+ Taped distance", () => {
+  out.push(el("div", { class: "table-scroll" }, tb), btn("+ Taped distance", () => {
     p.baselines.push({ id: sid("B"), a: p.datum.origin, b: p.datum.orient, dist: "", note: "", off: false });
     changed(true);
   }));
@@ -431,13 +443,13 @@ function setupCard(s, si) {
     sel(s.backsight, [["", "—"], ...lmOptions(s.station)], (v) => { s.backsight = v; changed(true); }, { class: "grow" }),
     el("span", { class: "calc" }, "@"),
     inp(s.bsReading, (v) => { s.bsReading = v; }, { style: "width:90px", title: "Circle reading on the backsight", "data-calc": "angle" }),
-    btn("✕", () => { if (confirm("Delete this setup and its readings?")) { APP.p.setups = APP.p.setups.filter((x) => x !== s); changed(true); } }, "small danger")));
+    btn("✕", async () => { if (await uiConfirm("Delete this setup and its readings?", { okText: "Delete", danger: true })) { APP.p.setups = APP.p.setups.filter((x) => x !== s); changed(true); } }, "small danger")));
   const t = el("table", { class: "book" }, el("tr", {}, ...["Target", "Circle reading", "Angle right", "Dist.", "Resid.", "Ign.", "Note", ""].map((x) => el("th", {}, x))));
   s.readings.forEach((r, ri) => {
     const hi = APP.hiRef && APP.hiRef.reading === r.id;
-    const tsel = sel(r.target, targetOptions(s.station), (v) => {
+    const tsel = sel(r.target, targetOptions(s.station), async (v) => {
       if (v === "__new__") {
-        const name = prompt("Name of the new point:", nextName(p.points, "P"));
+        const name = await uiPrompt("Name of the new point:", nextName(p.points, "P"), { okText: "Add point" });
         if (name) { const id = sid("P"); p.points.push({ id, name, type: "", depth: "", desc: "" }); r.target = id; }
         changed(true);
         return;
@@ -466,7 +478,7 @@ function setupCard(s, si) {
       el("td", {}, note),
       el("td", {}, btn("✕", () => { s.readings = s.readings.filter((x) => x !== r); changed(true); }, "small danger"))));
   });
-  card.append(t, el("div", { class: "row", style: "margin-top:6px" },
+  card.append(el("div", { class: "table-scroll" }, t), el("div", { class: "row", style: "margin-top:6px" },
     btn("+ Reading", () => { s.readings.push({ id: sid("R"), target: "", reading: "", dist: "", note: "", off: false }); changed(true); }, "small"),
     inp(s.note, (v) => { s.note = v; }, { placeholder: "Setup note (weather, instrument height, who read it…)", class: "grow" })));
   return card;
@@ -557,12 +569,12 @@ function paneObstacles() {
   return out;
 }
 
-function editVertex(o, i) {
+async function editVertex(o, i) {
   const v = o.pts[i];
-  const t = prompt(`Corner ${i + 1}: northing, easting (${unitAbbr(APP.p)})`, `${v[1].toFixed(2)}, ${v[0].toFixed(2)}`);
+  const t = await uiPrompt(`Corner ${i + 1}: northing, easting (${unitAbbr(APP.p)})`, `${v[1].toFixed(2)}, ${v[0].toFixed(2)}`);
   if (t === null) return;
   const m = /^\s*(-?[\d.]+)\s*[,;\s]\s*(-?[\d.]+)\s*$/.exec(t);
-  if (!m || !Number.isFinite(+m[1]) || !Number.isFinite(+m[2])) { alert("Enter the northing and easting separated by a comma."); return; }
+  if (!m || !Number.isFinite(+m[1]) || !Number.isFinite(+m[2])) { uiAlert("Enter the northing and easting separated by a comma."); return; }
   o.pts[i] = [+m[2], +m[1]];
   changed(true);
 }
@@ -701,11 +713,11 @@ function selectEntity(id) {
   renderMap(APP.p, APP.sol);
 }
 
-function deleteEntity(id) {
+async function deleteEntity(id) {
   const p = APP.p;
   const ent = entities(p).get(id);
   const uses = p.setups.reduce((n, s) => n + (s.station === id || s.backsight === id ? 1 : 0) + s.readings.filter((r) => r.target === id).length, 0);
-  if (!confirm(`Delete ${ent.name || "this item"}?${uses ? ` Its ${uses} field-book entr${uses > 1 ? "ies" : "y"} will lose their target.` : ""}`)) return;
+  if (!await uiConfirm(`Delete ${ent.name || "this item"}?${uses ? ` Its ${uses} field-book entr${uses > 1 ? "ies" : "y"} will lose their target.` : ""}`, { okText: "Delete", danger: true })) return;
   p.landmarks = p.landmarks.filter((x) => x.id !== id);
   p.points = p.points.filter((x) => x.id !== id);
   for (const l of p.lines) l.pts = l.pts.filter((x) => x !== id);
@@ -755,7 +767,7 @@ async function planPrintSvg(p, sol, G, { interactive = true } = {}) {
     const im = planImagery(p, G, plan);
     const ok = await preloadImages(im.tiles.map((t) => t.href));
     if (interactive && ok < im.tiles.length &&
-        !confirm(`${im.tiles.length - ok} of ${im.tiles.length} imagery tiles didn't load (offline?). Print anyway?`)) return null;
+        !await uiConfirm(`${im.tiles.length - ok} of ${im.tiles.length} imagery tiles didn't load (offline?). Print anyway?`, { okText: "Print" })) return null;
     svg = svg.replace(/(<rect width="[^"]+" height="[^"]+" fill="#fff"\/>)/, (m) => m + im.svg);
   }
   return svg;
@@ -777,8 +789,8 @@ function bindUi() {
   $("#btnNew").addEventListener("click", () => addProject(newProject(`Survey ${APP.store.projects.length + 1}`)));
   $("#btnExample").addEventListener("click", () => addProject(exampleProject()));
   $("#btnDup").addEventListener("click", () => { const c = normalizeProject(JSON.parse(JSON.stringify(APP.p))); c.id = sid("p"); c.name += " (copy)"; addProject(c); });
-  $("#btnDel").addEventListener("click", () => {
-    if (!confirm(`Delete the survey "${APP.p.name}"? This can't be undone (save a JSON copy first if unsure).`)) return;
+  $("#btnDel").addEventListener("click", async () => {
+    if (!await uiConfirm(`Delete the survey "${APP.p.name}"? This can't be undone (save a JSON copy first if unsure).`, { okText: "Delete survey", danger: true })) return;
     APP.store.projects.splice(APP.store.cur, 1);
     if (!APP.store.projects.length) APP.store.projects.push(newProject());
     switchProject(Math.min(APP.store.cur, APP.store.projects.length - 1));
@@ -791,21 +803,35 @@ function bindUi() {
       const d = JSON.parse(await f.text());
       for (const x of Array.isArray(d) ? d : [d]) APP.store.projects.push(normalizeProject({ ...x, id: sid("p") }));
       switchProject(APP.store.projects.length - 1);
-    } catch (err) { alert("Could not read that file: " + err.message); }
+    } catch (err) { uiAlert("Could not read that file: " + err.message); }
   });
-  $("#btnSave").addEventListener("click", () => downloadBlob(new Blob([JSON.stringify(APP.p, null, 1)], { type: "application/json" }), fileName("json")));
+  $("#btnSave").addEventListener("click", () => saveFile(fileName("json"), JSON.stringify(APP.p, null, 1)));
   const menu = $(".menu");
   $("#btnExport").addEventListener("click", (e) => { e.stopPropagation(); menu.classList.toggle("open"); });
   document.addEventListener("click", () => menu.classList.remove("open"));
-  $("#btnCsv").addEventListener("click", () => downloadBlob(new Blob([coordinatesCsv(APP.p, APP.sol, APP.geo)], { type: "text/csv" }), fileName("csv")));
+  $("#btnCsv").addEventListener("click", () => saveFile(fileName("csv"), coordinatesCsv(APP.p, APP.sol, APP.geo)));
   $("#btnKml").addEventListener("click", () => {
-    if (!APP.geo || !APP.geo.ok) { alert("Give at least one landmark a latitude/longitude first (Landmarks tab)."); return; }
-    downloadBlob(new Blob([siteKml(APP.p, APP.sol, APP.geo)], { type: "application/vnd.google-earth.kml+xml" }), fileName("kml"));
+    if (!APP.geo || !APP.geo.ok) { uiAlert("Give at least one landmark a latitude/longitude first (Landmarks tab)."); return; }
+    saveFile(fileName("kml"), siteKml(APP.p, APP.sol, APP.geo));
   });
-  $("#btnDxfPlan").addEventListener("click", () => downloadBlob(new Blob([sheetToDxf(renderPlan(APP.p, APP.sol, { geo: APP.geo }).sheet)], { type: "application/dxf" }), fileName("dxf")));
-  $("#btnDxfWorld").addEventListener("click", () => downloadBlob(new Blob([worldDxf(APP.p, APP.sol)], { type: "application/dxf" }), fileName("dxf").replace(".dxf", "_1to1.dxf")));
-  $("#btnPrintPlan").addEventListener("click", printPlan);
-  $("#btnPrintReport").addEventListener("click", printReport);
+  $("#btnDxfPlan").addEventListener("click", () => saveFile(fileName("dxf"), sheetToDxf(renderPlan(APP.p, APP.sol, { geo: APP.geo }).sheet)));
+  $("#btnDxfWorld").addEventListener("click", () => saveFile(fileName("dxf").replace(".dxf", "_1to1.dxf"), worldDxf(APP.p, APP.sol)));
+  if (HOSTED) {
+    // a hosted page can't print: offer the plan and report as files to open and print
+    $("#btnPrintPlan").textContent = "Plan (SVG)";
+    $("#btnPrintPlan").title = "ANSI B plan sheet as an SVG file: open it in a browser and print at 11×17";
+    $("#btnPrintReport").textContent = "Report (HTML)";
+    $("#btnPrintReport").title = "Letter-size report as an HTML file: open it in a browser and print";
+    $("#btnPrintPlan").addEventListener("click", () => {
+      const svg = sheetToSvg(renderPlan(APP.p, APP.sol, { geo: APP.geo }).sheet, { width: "17in", height: "11in" });
+      saveFile(fileName("svg").replace(".svg", "_plan.svg"), standaloneSvg(svg, APP.p.font));
+    });
+    $("#btnPrintReport").addEventListener("click", () =>
+      saveFile(fileName("html").replace(".html", "_report.html"), standaloneReport(APP.p, reportHtml(APP.p, APP.sol, APP.geo))));
+  } else {
+    $("#btnPrintPlan").addEventListener("click", printPlan);
+    $("#btnPrintReport").addEventListener("click", printReport);
+  }
   for (const [id, k] of [["#optSights", "sights"], ["#optEll", "ellipses"], ["#optLabels", "labels"]]) {
     $(id).addEventListener("change", (e) => { MAP.opts[k] = e.target.checked; renderMap(APP.p, APP.sol); });
   }
@@ -825,7 +851,15 @@ function bindUi() {
   if (!APP.store.projects.length) APP.store.projects.push(exampleProject());
   bindUi();
   switchProject(APP.store.cur);
-  window.SV = { APP, MAP, solveProject, normalizeProject, findOptions, renderPlan, sheetToSvg, sheetToDxf, worldDxf, coordinatesCsv, reportHtml,
+  connectHost((list) => {
+    // surveys saved in the account replace this browser's copy
+    let curId = null;
+    try { curId = localStorage.getItem(STORE_KEY + ".cur"); } catch (_) { /* ignore */ }
+    APP.store.projects = list.map(normalizeProject);
+    const i = APP.store.projects.findIndex((p) => p.id === curId);
+    switchProject(i >= 0 ? i : 0);
+  });
+  window.SV = { APP, MAP, HOST, ask, makeZip, standaloneReport, standaloneSvg, solveProject, normalizeProject, findOptions, renderPlan, sheetToSvg, sheetToDxf, worldDxf, coordinatesCsv, reportHtml,
                 parseAngle, fmtDMS, georeference, localToLL, llToLocal, parseLatLon, imageryTiles, llToPx, pxToLl, planImagery, planPrintSvg,
                 siteKml, blockingShapes, sightBlocker, obstacleMessages, geoMessages, renderMap, renderPane };
 })();
