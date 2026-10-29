@@ -1,0 +1,19 @@
+{
+ "name": "No-heat troubleshooting",
+ "text": "Boiler not heating {pill}\n  Is the thermostat calling? | 24 VAC across R and W at the boiler\n    [No] Fix the thermostat circuit | batteries, setpoint, wiring {gray}\n    [Yes] Is the circulator running? | warm pump body, faint hum\n      [No] Check the circulator | relay, capacitor, stuck impeller {red}\n      [Yes] Does the burner light? | listen for ignition\n        [No] Lockout or no spark? | read the control's status code\n          [Lockout] Reset once | if it locks out again, call for service {red}\n          [No spark] Check igniter and flame sensor | clean the sensor rod {orange}\n        [Yes] Pressure 12–15 psi when cold? | boiler gauge\n          [Low] Find the leak, check the fill valve {orange}\n          [OK] Bleed air from the zones | top-floor radiators first {green}\n",
+ "s": {
+  "layout": "flowchart",
+  "nodeStyle": "boxes",
+  "connector": "elbow",
+  "page": "letter",
+  "orient": "landscape",
+  "font": "b612",
+  "textSize": 9.5,
+  "boxWidth": 1.7,
+  "hGap": 0.2,
+  "vGap": 0.45,
+  "fill": true,
+  "title": "No heat: what to check, in order",
+  "footnote": "Turn off power and fuel before opening the boiler. Gas or oil leaks: leave and call the utility."
+ }
+}

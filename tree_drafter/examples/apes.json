@@ -1,0 +1,19 @@
+{
+ "name": "Hominoid phylogeny",
+ "text": "// Ape family tree. Branch lengths are millions of years, so the tips line up at the present.\nHominoidea {0}\n  Hylobatidae | gibbons {17}\n  Hominidae {3}\n    _Pongo pygmaeus_ | Bornean orangutan {14 orange}\n    Homininae {6}\n      _Gorilla gorilla_ | western gorilla {8}\n      Hominini {1.5 green}\n        _Homo sapiens_ | human {6.5}\n        Panina {4.5}\n          _Pan troglodytes_ | chimpanzee {2}\n          _Pan paniscus_ | bonobo {2}\n",
+ "s": {
+  "layout": "phylogram",
+  "nodeStyle": "labels",
+  "connector": "elbow",
+  "page": "letter",
+  "orient": "landscape",
+  "font": "b612",
+  "textSize": 11,
+  "boxWidth": 1.5,
+  "hGap": 0.3,
+  "title": "Hominoid divergence",
+  "subtitle": "Branch lengths in millions of years",
+  "unit": "Myr",
+  "footnote": "Approximate divergence dates, rounded from published molecular-clock estimates."
+ }
+}

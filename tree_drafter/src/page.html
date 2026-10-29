@@ -1,0 +1,105 @@
+<!doctype html>
+<!--
+  Tree Drafter: downward-flowing trees and flowcharts (phylogenetic trees,
+  decision trees, hierarchies) from an indented outline, fitted to a page.
+  Self-contained: open this file in a browser. No server, no network access needed.
+  Built from src/ by tools/build.py; edit the sources, not this file.
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tree Drafter</title>
+<style>
+/*@@CSS@@*/
+</style>
+<style id="pageCss"></style>
+</head>
+<body>
+<header class="topbar">
+  <div class="brand">Tree Drafter <span>downward trees &amp; flowcharts</span></div>
+  <div class="group">
+    <select id="docSelect" title="Trees in this browser" aria-label="Tree"></select>
+    <div class="menu">
+      <button id="btnNew">New ▾</button>
+      <div class="menu-list">
+        <button id="btnBlank">Blank tree</button>
+        <hr>
+        <div class="menu-head">Examples</div>
+        <div id="exampleList"></div>
+      </div>
+    </div>
+    <button id="btnDup" title="Duplicate this tree">Duplicate</button>
+    <button id="btnDel" class="danger" title="Delete this tree">Delete</button>
+  </div>
+  <div class="group end">
+    <span id="saveState" class="save-state"></span>
+    <button id="btnImport" title="Open a saved .json tree, a Newick file (.nwk, .tre) or an outline (.txt)">Import</button>
+    <button id="btnNewick" title="Paste a tree in Newick format">Paste Newick</button>
+    <button id="btnSaveJson">Save JSON</button>
+    <div class="menu">
+      <button id="btnExport">Export ▾</button>
+      <div class="menu-list end">
+        <button id="btnSvg">SVG (vector, for documents)</button>
+        <button id="btnPng">PNG (200 dpi image)</button>
+        <button id="btnDxf">DXF (CAD, inches, 1:1)</button>
+        <button id="btnNwk">Newick (phylogenetics software)</button>
+      </div>
+    </div>
+    <button id="btnPrint" class="primary" title="Print at the page size, or Save as PDF from the print dialog">Print / PDF</button>
+  </div>
+  <input type="file" id="fileInput" accept=".json,.nwk,.newick,.tre,.tree,.txt,text/plain,application/json" hidden>
+</header>
+
+<main>
+  <section class="left">
+    <nav class="tabs">
+      <button data-tab="outline" class="active">Outline</button>
+      <button data-tab="style">Layout &amp; style</button>
+    </nav>
+    <div class="pane" id="paneOutline">
+      <label class="field"><span>Name</span><input id="docName" type="text"></label>
+      <textarea id="outline" spellcheck="false" aria-label="Outline: one node per line, indent for children"></textarea>
+      <div id="messages" class="messages"></div>
+      <details class="help">
+        <summary>Outline syntax</summary>
+        <table>
+          <tr><td><code>Parent</code><br><code>&nbsp;&nbsp;Child</code></td><td>One node per line. Indent (Tab or spaces) to make children.</td></tr>
+          <tr><td><code>Label | detail</code></td><td>A second, smaller line of text.</td></tr>
+          <tr><td><code>[Yes] Label</code></td><td>A label on the branch coming into the node.</td></tr>
+          <tr><td><code>_Homo sapiens_</code></td><td>Italic label (species names).</td></tr>
+          <tr><td><code>Label {2.5}</code></td><td>Branch length, for the phylogram layout.</td></tr>
+          <tr><td><code>Label {green}</code></td><td>Colours this branch and everything below it: red, orange, gold, green, teal, blue, navy, purple, pink, brown, gray, or <code>#hex</code>.</td></tr>
+          <tr><td><code>Label {pill}</code></td><td>Box shape: round (default), box, pill, plain. Also <code>dashed</code>, <code>bold</code>, <code>italic</code>.</td></tr>
+          <tr><td><code>A long\nlabel</code></td><td>Line break inside a label.</td></tr>
+          <tr><td><code>{0.3}</code></td><td>A node with no label (a bare junction).</td></tr>
+          <tr><td><code>// note</code></td><td>Comment line, not drawn.</td></tr>
+        </table>
+        <p>Tab and Shift+Tab indent and outdent the selected lines. Click a box in the preview to find its line.</p>
+      </details>
+    </div>
+    <div class="pane" id="paneStyle" hidden></div>
+  </section>
+  <section class="right">
+    <div class="preview-tools">
+      <span id="summary" class="summary"></span>
+      <span class="spacer"></span>
+      <button id="zoomOut" title="Zoom out" aria-label="Zoom out">−</button>
+      <span id="zoomLabel">100%</span>
+      <button id="zoomIn" title="Zoom in" aria-label="Zoom in">+</button>
+      <button id="zoomFit">Fit</button>
+    </div>
+    <div class="preview" id="preview"><div class="page" id="page"></div></div>
+  </section>
+</main>
+
+<div id="printSheet"></div>
+
+<script type="application/json" id="font-data">@@FONTS@@</script>
+<script type="application/json" id="dxf-template">@@TEMPLATE@@</script>
+<script type="application/json" id="examples">@@EXAMPLES@@</script>
+<script>
+//@@JS@@
+</script>
+</body>
+</html>

@@ -1,0 +1,19 @@
+{
+ "name": "Electrical distribution",
+ "text": "Utility transformer | 25 kVA, 120/240 V {box}\n  Meter | Form 2S, 200 A {box}\n    Main panel A | 200 A, 40 spaces {bold}\n      Kitchen | 4 circuits\n        [20 A] Countertop | GFCI, left\n        [20 A] Countertop | GFCI, right\n        [20 A] Dishwasher\n        [15 A] Range hood\n      Laundry | 2 circuits\n        [30 A 2P] Dryer\n        [20 A] Washer\n      [60 A 2P] Subpanel B | detached workshop {blue}\n        [20 A] Bench outlets | GFCI\n        [30 A 2P] Air compressor\n        [15 A] Shop lights\n      [50 A 2P] EV charger | 40 A continuous\n      [30 A 2P] Generator inlet | interlock kit {dashed gray}\n",
+ "s": {
+  "layout": "flowchart",
+  "nodeStyle": "boxes",
+  "connector": "rounded",
+  "page": "letter",
+  "orient": "landscape",
+  "font": "b612",
+  "textSize": 9,
+  "boxWidth": 1.35,
+  "hGap": 0.16,
+  "vGap": 0.42,
+  "fill": true,
+  "title": "1234 Example Street: electrical distribution",
+  "footnote": "Breaker sizes on the branches. Dashed: standby source."
+ }
+}
