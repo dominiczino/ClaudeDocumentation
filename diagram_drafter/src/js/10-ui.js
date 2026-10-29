@@ -224,7 +224,7 @@ function docProps() {
   const font = docFont(d);
   if (font === FONTS.arial) fnote.append("Arial comes with Windows and macOS.");
   else {
-    const links = font.files.map((f) => { const a = el("a", { href: "#" }, f); a.onclick = (e) => { e.preventDefault(); downloadBlob(fontFileBlob(f), f); }; return a; });
+    const links = font.files.map((f) => { const a = el("a", { href: "#" }, f); a.onclick = (e) => { e.preventDefault(); saveFile(f, fontFileBlob(f)); }; return a; });
     fnote.append("For the DXF to look right in CAD, install ", links[0], " and ", links[1], " (SIL Open Font License).");
   }
   out.push(fnote);
@@ -314,21 +314,18 @@ function showCheck() {
 
 // ------------------------------------------------------------- file / export
 function fileName(ext) { return `${(ED.doc.name || "drawing").replace(/[^A-Za-z0-9_-]+/g, "_")}.${ext}`; }
-function downloadBlob(blob, name) {
-  const a = el("a", { href: URL.createObjectURL(blob), download: name });
-  document.body.append(a);
-  a.click();
-  setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
-}
-
-function exportDxf() {
+async function exportDxf() {
   const { sheet } = renderDoc(ED.doc);
-  downloadBlob(new Blob([sheetToDxf(sheet)], { type: "application/dxf" }), fileName("dxf"));
-  setStatus(`Downloaded ${fileName("dxf")}`);
+  if (await saveFile(fileName("dxf"), sheetToDxf(sheet))) setStatus(`Saved ${fileName("dxf")}`);
 }
 
 function printSheet() {
   const { sheet } = renderDoc(ED.doc);
+  if (HOSTED) {
+    // a hosted page can't print: offer the sheet as an SVG to open and print at 17×11
+    saveFile(fileName("svg"), standaloneSvg(sheetToSvg(sheet, { width: "17in", height: "11in" }), FONTS[ED.doc.font] || FONTS[DEFAULT_FONT]));
+    return;
+  }
   $("#printSheet").innerHTML = sheetToSvg(sheet, { width: "17in", height: "11in" });
   const prev = document.title;
   document.title = fileName("pdf").replace(/\.pdf$/, "");
@@ -350,8 +347,8 @@ function bindUi() {
     d.id = uid("d"); d.name += " (copy)";
     addDoc(d);
   });
-  $("#btnDelDoc").addEventListener("click", () => {
-    if (!confirm(`Delete the drawing "${ED.doc.name}"? This cannot be undone.`)) return;
+  $("#btnDelDoc").addEventListener("click", async () => {
+    if (!await uiConfirm(`Delete the drawing "${ED.doc.name}"? This cannot be undone.`, { okText: "Delete", danger: true })) return;
     ED.store.docs.splice(ED.store.cur, 1);
     if (!ED.store.docs.length) ED.store.docs.push(newDoc("oneline"));
     switchDoc(Math.min(ED.store.cur, ED.store.docs.length - 1));
@@ -379,12 +376,17 @@ function bindUi() {
       }
       switchDoc(ED.store.docs.length - 1);
       setStatus(`Imported ${list.length} drawing(s)`);
-    } catch (err) { alert("Could not read that file: " + err.message); }
+    } catch (err) { uiAlert("Could not read that file: " + err.message); }
   });
   $("#btnSaveJson").addEventListener("click", () =>
-    downloadBlob(new Blob([JSON.stringify(JSON.parse(cleanDoc(ED.doc)), null, 1)], { type: "application/json" }), fileName("json")));
+    saveFile(fileName("json"), JSON.stringify(JSON.parse(cleanDoc(ED.doc)), null, 1)));
   $("#btnDxf").addEventListener("click", exportDxf);
   $("#btnPrint").addEventListener("click", printSheet);
+  if (HOSTED) {
+    $("#btnPrint").textContent = "Sheet (SVG)";
+    $("#btnPrint").title = "The 17×11 sheet as an SVG file: open it in a browser and print, or place it in a document";
+    $("#btnDxf").textContent = "Save DXF";
+  }
   $("#zoomIn").addEventListener("click", () => zoomAt(1.25, ED.view.x + ED.view.w / 2, ED.view.y + ED.view.h / 2));
   $("#zoomOut").addEventListener("click", () => zoomAt(0.8, ED.view.x + ED.view.w / 2, ED.view.y + ED.view.h / 2));
   $("#zoomFit").addEventListener("click", zoomFit);
@@ -410,5 +412,11 @@ function bindUi() {
   bindCanvas();
   renderGrid();
   switchDoc(ED.store.cur);
+  connectHost((s) => {
+    // drawings saved in the account replace this browser's copy
+    if (!s || !Array.isArray(s.docs) || !s.docs.length) return;
+    ED.store = { docs: s.docs.map(normalizeDoc), cur: clamp(s.cur | 0, 0, s.docs.length - 1) };
+    switchDoc(ED.store.cur);
+  });
   window.DD = { ED, autoArrange, routeEdges, renderDoc, sheetToDxf, sheetToSvg, normalizeDoc, checkLayout, nodeGeom, allGeoms };
 })();

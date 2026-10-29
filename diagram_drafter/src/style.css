@@ -137,6 +137,20 @@ main { flex: 1; display: grid; grid-template-columns: 236px 1fr 300px; min-heigh
 /* ---------------------------------------------------------------- print */
 #printSheet { display: none; }
 @page { size: 17in 11in; margin: 0; }
+/* narrow screens: stack the palette, sheet and properties */
+@media (max-width: 900px) {
+  body { overflow: auto; height: auto; }
+  main { grid-template-columns: minmax(0, 1fr); }
+  .palette { border-right: 0; border-bottom: 1px solid var(--line); max-height: 260px; }
+  .stage { height: 72vh; }
+  .props { border-left: 0; border-top: 1px solid var(--line); }
+  .group.right { margin-left: 0; }
+  .group { flex-wrap: wrap; }
+  .topbar select { min-width: 0; max-width: 100%; }
+  .statusbar { flex-wrap: wrap; }
+  .pal-grid { grid-template-columns: repeat(auto-fill, minmax(84px, 1fr)); }
+}
+
 @media print {
   body > *:not(#printSheet) { display: none !important; }
   body { background: #fff; display: block; overflow: visible; }

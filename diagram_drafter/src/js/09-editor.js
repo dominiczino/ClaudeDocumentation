@@ -47,7 +47,9 @@ function setStatus(t) { $("#status").textContent = t; }
 
 // ---------------------------------------------------------------- storage
 function saveStore() {
-  try { localStorage.setItem(STORE_KEY, JSON.stringify(ED.store)); } catch (_) { /* ignore */ }
+  const text = JSON.stringify(ED.store);
+  try { localStorage.setItem(STORE_KEY, text); } catch (_) { /* ignore */ }
+  hostSave(text);
 }
 function loadStore() {
   try {

@@ -2,6 +2,7 @@
 <!--
   Diagram Drafter: one-line diagrams and P&IDs on ANSI B (17x11 landscape) sheets.
   Self-contained: open this file in a browser. No server, no network access needed.
+  `python tools/build.py --hosted OUT.html` builds the claude.ai artifact version.
   Built from src/ by tools/build.py; edit the sources, not this file.
 -->
 <html lang="en">
@@ -41,6 +42,7 @@
     <button id="btnCheck" title="Check the layout for problems">Check</button>
   </div>
   <div class="group right">
+    <span id="saveState" class="save-state"></span>
     <button id="btnImport">Import</button>
     <button id="btnSaveJson">Save JSON</button>
     <button id="btnPrint" title="Print at 17×11, or Save as PDF from the print dialog">Print / PDF</button>

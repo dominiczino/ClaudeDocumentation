@@ -83,3 +83,7 @@ need Python with `ezdxf` and `playwright`:
   and checks each one with ezdxf: it must read back, pass ezdxf's validation check, and stay inside
   the sheet frame. It also checks that bad configs are rejected.
   `--out DIR` also writes the example DXF and PDF.
+
+## Hosted version
+
+`python tools/build_hosted.py OUT.html` makes the claude.ai artifact version. It has no page skeleton of its own, because the host supplies one. It saves panels to the viewer's account, not only to the browser. Files go through the host's save prompt, with the DXF wrapped in a .zip. Print is replaced by **Sheet (SVG)**, which saves the 11×17 sheet with its fonts embedded so you can open it in a browser and print it. Dialogs are drawn in the page.

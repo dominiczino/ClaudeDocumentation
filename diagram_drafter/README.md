@@ -121,3 +121,7 @@ python tools/build.py            # standard library only
   unrouted connections, layout-check errors, or DXF that fails ezdxf's validation check or leaves the
   sheet. `--out DIR` writes the example DXF and PDF.
 * `examples/*.json` are the built-in examples. The build embeds them.
+
+## Hosted version
+
+`python tools/build.py --hosted OUT.html` makes the claude.ai artifact version. It has no page skeleton of its own, because the host supplies one. It saves drawings to the viewer's account, not only to the browser. Files go through the host's save prompt, with the DXF wrapped in a .zip. Print is replaced by **Sheet (SVG)**, which saves the 17×11 sheet with its fonts embedded so you can open it in a browser and print it. Dialogs are drawn in the page. Below 900 px wide, the palette, sheet and properties stack.
